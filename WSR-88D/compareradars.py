@@ -1,21 +1,17 @@
 # @twhite
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.cm import get_cmap, ScalarMappable
+from matplotlib.cm import ScalarMappable
 import cartopy.crs as crs
 import cartopy.feature as cfeature
-from netCDF4 import Dataset
-from metpy.plots import ctables
-from wrf import (getvar, interpline, interplevel, to_np, vertcross, smooth2d, CoordPair, GeoBounds,get_cartopy, latlon_coords, cartopy_xlim, cartopy_ylim)
 import pyart
 import matplotlib.colors as mcolors
 import cartopy.io.shapereader as shpreader
 import os
-import glob
 import radarfuncs
 from datetime import datetime, timedelta
 import nexradaws
-
+conn = nexradaws.NexradAwsInterface()
 """
 This script plots NEXRAD radar data for a specified time period. It supports multiple radar sites and will automatically download the required data if not already present in the local directory.
 
@@ -25,8 +21,8 @@ Additionally, the script compares NEXRAD reflectivity data with output from a Cl
 # --- USER INPUT ----
 var = "cross_correlation_ratio" # "reflectivity", "cross_correlation_ratio", "spectrum_width","differential_phase","velocity"
 time_of_interest = datetime(2025,2,16,6,11,0)
-radar_data_dir = '/data2/white/DATA/LESPaRC/NEXRADLVL2/'
-savepath = f"/data2/white/PLOTS_FIGURES/LESPaRC/"
+radar_data_dir = 'C:/Users/thoma/Documents/DATA/LESPaRC/NEXRADLVL2'
+savepath = "C:/Users/thoma/Documents/PLOTS_FIGURES/LESPaRC"
 
 # Area for the plan view (Left Lon, Right Lon, Bottom Lat, Top Lat)
 extent = [-82,-77.00000,40.5,42.5]
@@ -54,7 +50,7 @@ for radar in radars:
 
 # Check for missing files and handle downloading if needed
 missing_radars = [radar for radar, file in radar_files.items() if file is None]
-conn = nexradaws.NexradAwsInterface()
+
 
 if missing_radars:
     print(f"Missing radar files for: {missing_radars}")
@@ -73,7 +69,7 @@ if missing_radars:
 
     # **Step 3: Re-check for Files After Download**
 for radar in missing_radars:
-    file_path = uncs.find_closest_radar_file(time_of_interest, radar_data_dir, radar)
+    file_path = radarfuncs.find_closest_radar_file(time_of_interest, radar_data_dir, radar)
     if file_path and os.path.exists(file_path):
         radar_files[radar] = file_path
     else:
