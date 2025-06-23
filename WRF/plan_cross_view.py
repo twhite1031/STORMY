@@ -22,13 +22,14 @@ On the right, a cross section of reflectivity, water vapor mixing ratio, and ver
 """
 # --- USER INPUT ---
 
-wrf_date_time = datetime(1997,1,12,1,52,00)
+wrf_date_time = datetime(2022,11,18,1,00,00)
 domain = 2
 # Cross section start and end (lattitude, longitude)
 lat_lon = [(43.65, -76.75), (43.65,-75.5)]
 
-SIMULATION = "NORMAL" # If comparing runs
-path = f"/data2/white/WRF_OUTPUTS/SEMINAR/{SIMULATION}_ATTEMPT/"
+SIMULATION = 1 # If comparing runs
+path = f"/data2/white/WRF_OUTPUTS/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
+savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
 
 # --- END USER INPUT ---
 
@@ -247,6 +248,12 @@ vapor_contours.remove()
 date_format = wrf_date_time.strftime("%Y-%m-%d %H:%M:%S")
 ax_plan.set_title(f"Plan view of Composite Reflectivity (dBZ) at " + date_format, fontsize=14, fontweight='bold')
 ax_cross.set_title(f"Cross-Section of Composite Reflectivity (dBZ), Water Vapor Mixing Ratio (g/kg), and Vertical Velocity at " + date_format, fontsize=14, fontweight='bold')
-#savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{ATTEMPT}/"
-#pyplot.savefig(savepath+f"3DFLASHI{wrf_filename.year:04d}{wrf_filename.month:02d}{wrf_filename.day:02d}{wrf_filename.hour:02d}{wrf_filename.minute:02d}D{domain}T{timeidx}A{ATTEMPT}H{strflashheight}.png")
-pyplot.show()
+
+
+
+# Format it for a filename (no spaces/colons)
+safe_str = matched_time.strftime("%Y-%m-%d_%H-%M-%S")
+# Use in filename
+filename = f"plancross_{safe_str}.png"
+pyplot.savefig(savepath+filename)
+#pyplot.show()
