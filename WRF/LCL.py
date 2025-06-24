@@ -26,9 +26,11 @@ savefig = True
 windbarbs = False
 gridlines = False
 
-storm_path = "/data1/white/Downloads/MET416/Storm_reports/"
-path = f"/data1/white/WRF_OUTPUTS/MET416/"
+SIMULATION = 1 # If comparing runs
+path = f"/data2/white/WRF_OUTPUTS/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
+savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
 
+storm_path = "/data1/white/Downloads/MET416/Storm_reports/"
 # --- END USER INPUT ---
 
 time_df = wrffuncs.build_time_df(path, domain)
@@ -46,7 +48,7 @@ matched_timeidx = match["timeidx"]
 matched_time = match["time"]
 
 print(f"Closest match: {matched_time} in file {matched_file} at time index {matched_timeidx}")
-
+'''
 # Open storm report file
 df = pd.read_csv(storm_path + "180515_rpts_torn.csv", index_col=False,sep=",", header=0,
                  names=["Time", "F_Scale", "Location","County","State","Lat","Lon"])
@@ -55,7 +57,7 @@ df = pd.read_csv(storm_path + "180515_rpts_torn.csv", index_col=False,sep=",", h
 time = df['Time'].values
 torlat = df['Lat'].values
 torlon = df['Lon'].values
-
+'''
 # Get the CAPE values (And more, CAPE is at [0], CIN at [1], LCL at [2], and LFC at[3])
 with Dataset(matched_file) as ds:
 	cape = getvar(ds, "cape_2d", timeidx=matched_timeidx)
@@ -96,7 +98,7 @@ ax.set_xlim(cartopy_xlim(cape))
 ax.set_ylim(cartopy_ylim(cape))
 
 # Plot tornado location
-plt.scatter(to_np(torlon), to_np(torlat),transform=crs.PlateCarree())
+#plt.scatter(to_np(torlon), to_np(torlat),transform=crs.PlateCarree())
 
 # Add the gridlines
 
@@ -115,6 +117,10 @@ if windbarbs == True:
 #Show and/or Save
 plt.title(f"LCL Height (m) at " + str(matched_time),{"fontsize" : 14})
 
-#if savefig == True:
-	#plt.savefig("/data1/white/PLOTS_FIGURES/MET416/LCL" + date + ".png")
+time_str = matched_time.strftime("%Y-%m-%d_%H-%M-%S")
+# Use in filename
+filename = f"LCL_{time_str}.png"
+
+plt.savefig(savepath+filename)
+
 plt.show()

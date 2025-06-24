@@ -23,8 +23,9 @@ wrf_date_time = datetime(1997,1,12,1,52,00)
 domain = 2
 var = "T2"
 
-SIMULATION = "NORMAL" # If comparing runs
-path = f"/data2/white/WRF_OUTPUTS/SEMINAR/{SIMULATION}_ATTEMPT/"
+SIMULATION = 1 # If comparing runs
+path = f"/data2/white/WRF_OUTPUTS/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
+savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
 
 # --- END USER INPUT ---
 
@@ -78,4 +79,11 @@ ax.set_ylim(cartopy_ylim(plot_var))
 # Add the title
 time_object_adjusted = wrffuncs.parse_filename_datetime_wrf(matched_file, matched_timeidx)
 ax.set_title(f"{var} at " + str(time_object_adjusted))
+
+# Format it for a filename (no spaces/colons)
+time_str = matched_time.strftime("%Y-%m-%d_%H-%M-%S")
+# Use in filename
+filename = f"getvar{var}_{time_str}.png"
+plt.savefig(savepath+filename)
+
 plt.show()

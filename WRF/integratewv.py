@@ -272,6 +272,13 @@ if __name__ == "__main__":
     plt.xticks(datetime_array[::3],rotation=45)
     plt.legend()
     plt.grid()
+
+    # Format it for a filename (no spaces/colons)
+    time_str = matched_time.strftime("%Y-%m-%d_%H-%M-%S")
+    # Use in filename
+    filename = f"integratewv.png"
+
+    plt.savefig(savepath+filename)
     plt.show()
     print(datetime_array)
     

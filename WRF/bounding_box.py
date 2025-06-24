@@ -30,6 +30,7 @@ ax.scatter([lon_min, lon_max, lon_max, lon_min],
 ax.set_title('Bounding Box on USA Map')
 ax.legend()
 
+
 # Show plot
 plt.show()
 

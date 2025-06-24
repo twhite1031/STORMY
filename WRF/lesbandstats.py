@@ -188,10 +188,10 @@ def generate_frame(args):
             print("Attempt 2 at" + str(time_object_adjusted) + " - Max: " + str(round(max_F,2)) + " Mean: " + str(round(mean_F,2)) + " Median: " + str(round(median_F,2)) + " Standard Dev: " + str(round(std_F, 2)))
             print("Observation at" + formatted_datetime_obs + " - Max: " + str(round(max_obs,2)) + " Mean: " + str(round(mean_obs,2)) + " Median: " + str(round(median_obs,2)) + " Standard Dev: " + str(round(std_obs, 2)))
             print("------------------------------------------------------------")
+
     except Exception as e:
         return f"Error: {e}"  # Return the error message instead of crashing:
-        #print("Error processing files")
-        
+                
 if __name__ == "__main__":
 
   

@@ -161,11 +161,9 @@ def generate_frame(args):
     # Save the figure to a file
         frame_number = os.path.splitext(os.path.basename(file_path_N))[0]
         filename = f'frame_{frame_number}{timeidx}.png'
-        #if(time_object_adjusted.minute == 00):
-        #    plt.savefig(filename)
-        #print("Saving Frame")
+        plt.savefig(filename)
+        print("Saving Frame")
         plt.show()
-    #print(f"{os.path.basename(file_path)} Processed!")
         plt.close()
 
         return filename
@@ -195,11 +193,11 @@ if __name__ == "__main__":
         frame_filenames = list(frame_filenames_gen)  # Convert generator to list
        
     # Create the GIF
-    #filtered_list = [filename for filename in frame_filenames if filename is not None]    
-    #create_gif(sorted(filtered_list), output_gif)
+    filtered_list = [filename for filename in frame_filenames if filename is not None]    
+    create_gif(sorted(filtered_list), output_gif)
 
     # Clean up the frame files
-    #for filename in filtered_list:
-    #   print("Removing: ", filename)
-    #    os.remove(filename)
+    for filename in filtered_list:
+       print("Removing: ", filename)
+       os.remove(filename)
     

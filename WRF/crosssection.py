@@ -20,8 +20,9 @@ wrf_date_time = datetime(1997,1,12,1,52,00)
 domain = 2
 lat_lon = [(44.00, -76.75), (44.00,-75.5)] # Cross section start and end points
 
-SIMULATION = "NORMAL" # If comparing runs
-path = f"/data2/white/WRF_OUTPUTS/SEMINAR/{SIMULATION}_ATTEMPT/"
+SIMULATION = 1 # If comparing runs
+path = f"/data2/white/WRF_OUTPUTS/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
+savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
 
 # --- END USER INPUT ---
 
@@ -150,5 +151,11 @@ date_format = wrf_date_time.strftime("%Y-%m-%d %H:%M:%S")
 
 # Add a title
 ax_dbz.set_title(f"Cross-Section of Reflectivity (dBZ) at {date_format}", fontsize="14")
-#pyplot.savefig(savepath+f"crosssection{wrf_date_time.year:04d}{wrf_date_time.month:02d}{wrf_date_time.day:02d}{wrf_date_time.hour:02d}{wrf_date_time.minute:02d}D{domain}T{timeidx}A{ATTEMPT}.png")
+
+# Format it for a filename (no spaces/colons)
+time_str = matched_time.strftime("%Y-%m-%d_%H-%M-%S")
+# Use in filename
+filename = f"crosssection_{time_str}.png"
+
+pyplot.savefig(savepath+filename)
 pyplot.show()

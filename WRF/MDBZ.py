@@ -26,9 +26,9 @@ wrf_date_time = datetime(1997,1,12,1,52,00)
 domain = 2
 windbarbs = True
 
-SIMULATION = "NORMAL" # If comparing runs
-path = f"/data2/white/WRF_OUTPUTS/SEMINAR/{SIMULATION}_ATTEMPT/"
-
+SIMULATION = 1 # If comparing runs
+path = f"/data2/white/WRF_OUTPUTS/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
+savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
 # --- END USER INPUT ---
 
 time_df = wrffuncs.build_time_df(path, domain)
@@ -110,5 +110,11 @@ if windbarbs == True:
 date_format = wrf_date_time.strftime("%Y-%m-%d %H:%M:%S")
 plt.title(f"Simulated Composite Reflectivty (dBZ) at {date_format}",fontsize="14")
 
-#plt.savefig(savepath+f"MDBZ{wrf_date_time.year:04d}{wrf_date_time.month:02d}{wrf_date_time.day:02d}{wrf_date_time.hour:02d}{wrf_date_time.minute:02d}D{domain}T{timeidx}A{ATTEMPT}.png")
+# Filename friendly (No colons or spaces)
+time_str = matched_time.strftime("%Y-%m-%d_%H-%M-%S")
+# Use in filename
+filename = f"4castLES_{time_str}.png"
+
+plt.savefig(savepath+filename)
+
 plt.show()

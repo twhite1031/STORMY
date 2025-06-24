@@ -15,26 +15,47 @@ import math
 from metpy.plots import USCOUNTIES
 from metpy.plots import ctables
 import pandas as pd
-# ---- User input for file ----
+import wrffuncs
+from datetime import datetime
 
-# Format in YEAR, MONTH, DAY, HOUR, MINUTE, DOMAIN
-fileinfo = [2018, "05", 15, "18", "20", 2]
+# --- USER INPUT ---
 
-# Time index of file
-timeidx = 9
+wrf_date_time = datetime(1997,1,12,1,52,00)
+domain = 2
+height = 850
+
+SIMULATION = 1 # If comparing runs
+path = f"/data2/white/WRF_OUTPUTS/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
+savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
 
 # Boolean to save figure and display wind barbs, gridlines
 savefig = True
 windbarbs = False
 gridlines = False
 
-# ---- End User input ----
+# --- END USER INPUT ---
 
-# Open the NetCDF file
-path = f"/data1/white/WRF_Outputs/MET416/"
-pattern = f"wrfout_d0{fileinfo[5]}_{fileinfo[0]}-{fileinfo[1]}-{fileinfo[2]}_{fileinfo[3]}:{fileinfo[4]}:00"
-ncfile = Dataset(path+pattern)
+time_df = wrffuncs.build_time_df(path, domain)
+obs_time = pd.to_datetime(wrf_date_time)
 
+# Compute absolute time difference
+closest_idx = (time_df["time"] - obs_time).abs().argmin()
+
+# Extract the matched row
+match = time_df.iloc[closest_idx]
+
+# Unpack matched file info
+matched_file = match["filename"]
+matched_timeidx = match["timeidx"]
+matched_time = match["time"]
+
+print(f"Closest match: {matched_time} in file {matched_file} at time index {matched_timeidx}")
+
+with Dataset(matched_file) as ds:
+
+    #Get the CAPE values (And more, CAPE is at [0], CIN at [1], LCL at [2], and LFC at[3])
+    cape = getvar(ds, "cape_2d", timeidx=matched_timeidx)
+'''
 # Open storm report file
 path = "/data1/white/Downloads/MET416/Storm_reports/"
 df = pd.read_csv(path + "180515_rpts_torn.csv", index_col=False,sep=",", header=0,
@@ -44,9 +65,7 @@ df = pd.read_csv(path + "180515_rpts_torn.csv", index_col=False,sep=",", header=
 time = df['Time'].values
 torlat = df['Lat'].values
 torlon = df['Lon'].values
-
-# Get the CAPE values (And more, CAPE is at [0], CIN at [1], LCL at [2], and LFC at[3])
-cape = getvar(ncfile, "cape_2d", timeidx=timeidx)
+'''
 
 # Make levels for CAPE
 cape_levels = np.arange(0, 3000, 500)
@@ -84,7 +103,7 @@ ax.set_xlim(cartopy_xlim(cape))
 ax.set_ylim(cartopy_ylim(cape))
 
 # Plot tornado location
-plt.scatter(to_np(torlon), to_np(torlat),transform=crs.PlateCarree())
+#plt.scatter(to_np(torlon), to_np(torlat),transform=crs.PlateCarree())
 
 # Add the gridlines
 
@@ -100,10 +119,12 @@ if windbarbs == True:
           to_np(u_500[::25, ::25]), to_np(v_500[::25, ::25]),
           transform=crs.PlateCarree(), length=6)
 
-#Show and/or Save
-date = np.datetime_as_string(extract_times(ncfile,timeidx=timeidx,do_xtime=False))[0:19]
-plt.title(f"CAPE (j/kg) at " + date,{"fontsize" : 14})
+plt.title(f"CAPE (j/kg) at ",{"fontsize" : 14})
 
-if savefig == True:
-	plt.savefig("/data1/white/PLOTS_FIGURES/MET416/CAPE" + date + ".png")
+# Format it for a filename (no spaces/colons)
+time_str = matched_time.strftime("%Y-%m-%d_%H-%M-%S")
+# Use in filename
+filename = f"CAPE_{time_str}.png"
+
+plt.savefig(savepath + filename)
 plt.show()

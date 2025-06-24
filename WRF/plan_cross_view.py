@@ -252,8 +252,8 @@ ax_cross.set_title(f"Cross-Section of Composite Reflectivity (dBZ), Water Vapor 
 
 
 # Format it for a filename (no spaces/colons)
-safe_str = matched_time.strftime("%Y-%m-%d_%H-%M-%S")
+time_str = matched_time.strftime("%Y-%m-%d_%H-%M-%S")
 # Use in filename
-filename = f"plancross_{safe_str}.png"
+filename = f"plancross_{time_str}.png"
 pyplot.savefig(savepath+filename)
 #pyplot.show()

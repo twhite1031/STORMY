@@ -12,12 +12,16 @@ from wrf import (to_np, getvar, smooth2d, get_cartopy, cartopy_xlim, cartopy_yli
 from datetime import datetime
 import wrffuncs
 import pandas as pd
+
 # --- USER INPUT ---
 
-wrf_date_time = datetime(2018,5,15,18,00,00)
+wrf_date_time = datetime(1997,1,12,1,52,00)
 domain = 2
+height = 850
 
-path = f"/data1/white/WRF_OUTPUTS/MET416/"
+SIMULATION = 1 # If comparing runs
+path = f"/data2/white/WRF_OUTPUTS/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
+savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
 
 # --- END USER INPUT ---
 
@@ -68,8 +72,11 @@ plt.colorbar()
 ax.set_xlim(cartopy_xlim(lpi))
 ax.set_ylim(cartopy_ylim(lpi))
 
+time_str = matched_time.strftime("%Y-%m-%d_%H-%M-%S")
+# Use in filename
+filename = f"LPI_{time_str}.png"
+
 # Add the gridlines
-#plt.title(f"Lighting Potenital Index (J/kg) at {year}{month}{day}{hour}{minute}",{"fontsize" : 14})
-#if savefig == True:
-#	plt.savefig(path+f"LPI{year}{month}{day}{hour}{minute}A{ATTEMPT}.png")
+plt.title(f"Lighting Potenital Index (J/kg) at {time_str}")
+plt.savefig(savepath+filename)
 plt.show()
