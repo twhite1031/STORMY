@@ -26,10 +26,6 @@ import pandas as pd
 A side by side comparison of two WRF runs using plots of simulated reflectivity ('mdbz)
 A GIF will be made using the plots between the time periods
 """
-
-# MAY NEED TO USE IN SHELL
-#export PROJ_NETWORK=OFF
-
 # --- USER INPUT ---
 
 wrf_date_time = datetime(1997,1,12,1,52,00)
@@ -176,11 +172,9 @@ def generate_frame(args):
     # Save the figure to a file
         frame_number = os.path.splitext(os.path.basename(file_path_N))[0]
         filename = f'frame_{frame_number}{timeidx}.png'
-        #if(time_object_adjusted.minute == 00):
-        #    plt.savefig(filename)
-        #print("Saving Frame")
+        plt.savefig(filename)
+        print("Saving Frame")
         plt.show()
-    #print(f"{os.path.basename(file_path)} Processed!")
         plt.close()
 
         return filename

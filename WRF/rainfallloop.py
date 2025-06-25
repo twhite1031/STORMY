@@ -35,7 +35,6 @@ domain = 2
 
 # Path to each WRF run (NORMAL & FLAT)
 path = f"/data2/white/wrf/WRFV4.5.2/run/"
-
 # Path to save GIF or Files
 savepath = f""
 

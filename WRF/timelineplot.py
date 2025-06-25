@@ -43,6 +43,8 @@ time_df_F = time_df_F[mask_F].reset_index(drop=True)
 
 filelist_N = time_df_N["filename"].tolist()
 filelist_F = time_df_F["filename"].tolist()
+
+# Only need one of these since they are identical between different simulations
 timeidxlist = time_df_N["timeidx"].tolist()
 timelist = time_df_N["time"].tolist()
 
@@ -105,4 +107,13 @@ ax.set_ylabel('Height (m)',fontsize=18)
 ax.set_title('Planetary Boundary Layer Height',fontsize=24)
 ax.legend()
 ax.grid(True)
+
+# Format it for a filename (no spaces/colons)
+start_time, end_time = timelist[0], timelist[-1]
+start_time_str, end_time_str = start_time.strftime("%Y-%m-%d_%H-%M"), end_time.strftime("%Y-%m-%d_%H-%M")
+
+# Use in filename
+filename = f"4castLES_{start_time_str}_{end_time_str}.png"
+
+plt.savefig(savepath + filename)
 plt.show()

@@ -18,8 +18,9 @@ Plot of the Sea Level Pressure (SLP)
 wrf_date_time = datetime(1997,1,12,1,52,00)
 domain = 2
 
-SIMULATION = "NORMAL" # If comparing runs
-path = f"/data2/white/WRF_OUTPUTS/SEMINAR/{SIMULATION}_ATTEMPT/"
+SIMULATION = 1 # If comparing runs
+path = f"/data2/white/WRF_OUTPUTS/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
+savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
 
 # --- END USER INPUT ---
 
@@ -84,5 +85,13 @@ ax.gridlines(color="black", linestyle="dotted")
 # Adjust format for date to use in figure
 date_format = wrf_date_time.strftime("%Y-%m-%d %H:%M:%S")
 plt.title(f"Sea Level Pressure (hPa) at {date_format}", fontsize="14")
+
+# Format it for a filename (no spaces/colons)
+time_str = matched_time.strftime("%Y-%m-%d_%H-%M-%S")
+# Use in filename
+filename = f"SLP_{time_str}.png"
+
+plt.savefig(savepath+filename)
+
 
 plt.show()

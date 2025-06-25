@@ -143,7 +143,7 @@ def generate_frame(args):
         frame_number = os.path.splitext(os.path.basename(file_path_N))[0]
         filename = f'frame_{frame_number}{timeidx}.png'
         
-        #print("Saving Frame")
+        print("Saving Frame")
         plt.savefig(filename)
         plt.show()
         print(f"{os.path.basename(file_path_N)} Processed!")
