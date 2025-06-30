@@ -18,14 +18,17 @@ values based on a threshold, still in development.
 
 # --- USER INPUT ---
 
-wrf_date_time = datetime(1997,1,12,1,52,00)
+wrf_date_time = datetime(2022,11,17,23,40,00)
 domain = 2
 # Threshold to identify the snow band (e.g., reflectivity > 20 dBZ)
 threshold = 0
 
 SIMULATION = 1 # If comparing runs
-path = f"/data2/white/WRF_OUTPUTS/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
-savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
+# Path to each WRF run (NORMAL & FLAT)
+path = r"C:\Users\thoma\Documents\WRF_OUTPUTS"
+
+# Path to save GIF or Files
+savepath = r"C:\Users\thoma\Documents\WRF_OUTPUTS"
 
 # --- END USER INPUT ---
 
