@@ -1,5 +1,5 @@
 import wrffuncs
-from datetime import datetime, timedelta
+from datetime import datetime
 
 
 # User input for file

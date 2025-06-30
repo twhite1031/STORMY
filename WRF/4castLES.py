@@ -5,16 +5,11 @@ import cartopy.crs as crs
 import cartopy.feature as cfeature
 from netCDF4 import Dataset
 from metpy.plots import ctables
-from wrf import (getvar, interpline, interplevel, to_np, vertcross, smooth2d, CoordPair, GeoBounds,
-                 get_cartopy, latlon_coords, cartopy_xlim, cartopy_ylim,extract_times)
-import pyart
-from matplotlib.colors import BoundaryNorm
+from wrf import (getvar, interplevel, to_np, get_cartopy, latlon_coords, cartopy_xlim, cartopy_ylim)
 from metpy.units import units
 import wrffuncs
-from datetime import datetime, timedelta
-import glob
+from datetime import datetime
 import pandas as pd
-import os
 """
 A Three Panel Plot for forecasting Lake-effect Snow
 1. Wind Barbs

@@ -1,19 +1,11 @@
 from netCDF4 import Dataset
 import matplotlib.pyplot as plt
-from matplotlib.cm import (get_cmap,ScalarMappable)
-import matplotlib as mpl
 import cartopy.crs as crs
 import cartopy.feature as cfeature
 from cartopy.feature import NaturalEarthFeature
 import numpy as np
-import matplotlib.colors as colors
-from wrf import (to_np,interplevel, getvar, smooth2d, get_cartopy, cartopy_xlim, cartopy_ylim, latlon_coords,extract_times,cape_2d,tk)
-import matplotlib.ticker as mticker
-from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
-from matplotlib.colors import from_levels_and_colors
-import math
+from wrf import (to_np,getvar, get_cartopy, cartopy_xlim, cartopy_ylim, latlon_coords)
 from metpy.plots import USCOUNTIES
-from metpy.plots import ctables
 import pandas as pd
 import wrffuncs
 from datetime import datetime

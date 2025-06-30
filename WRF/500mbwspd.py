@@ -5,19 +5,17 @@ from matplotlib.cm import get_cmap
 import cartopy.crs as crs
 import cartopy.feature as cfeature
 from cartopy.feature import NaturalEarthFeature
-from wrf import (getvar, interplevel, to_np, latlon_coords, get_cartopy,cartopy_xlim, cartopy_ylim,extract_times)
+from wrf import (getvar, interplevel, to_np, latlon_coords, get_cartopy,cartopy_xlim, cartopy_ylim)
 import wrffuncs
-from datetime import datetime, timedelta
-import glob
+from datetime import datetime
 import pandas as pd
-import os
 """
 Plot of wind barbs at a set height level
 """
 
 # --- USER INPUT ---
 
-wrf_date_time = datetime(1997,1,12,1,52,00)
+wrf_date_time = datetime(2022,11,17,23,20,00)
 domain = 2
 height = 850
 

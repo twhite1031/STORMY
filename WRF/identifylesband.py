@@ -3,14 +3,13 @@ from matplotlib import pyplot
 from matplotlib.cm import get_cmap
 from matplotlib.colors import from_levels_and_colors
 from cartopy import crs
-from cartopy.feature import NaturalEarthFeature, COLORS
 from netCDF4 import Dataset
 from wrf import (getvar, to_np, get_cartopy, latlon_coords, vertcross,
-                 cartopy_xlim, cartopy_ylim, interpline, CoordPair, xy_to_ll)
+                 interpline, CoordPair, xy_to_ll)
 from scipy.ndimage import label
 import cartopy.feature as cfeature
 import wrffuncs
-from datetime import datetime, timedelta
+from datetime import datetime
 import pandas as pd
 """
 A script used to automatically identify Lake-effect band locations based on connected reflectivity

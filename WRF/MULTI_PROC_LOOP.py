@@ -1,23 +1,16 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import imageio
 import os
 import concurrent.futures
-from wrf import (to_np, getvar, smooth2d, get_cartopy, cartopy_xlim, cartopy_ylim, latlon_coords,extract_times)
-from matplotlib.cm import (get_cmap,ScalarMappable)
-import glob
+from wrf import (to_np, getvar, get_cartopy, cartopy_xlim, cartopy_ylim, latlon_coords)
 import cartopy.crs as crs
 import cartopy.feature as cfeature
 from cartopy.feature import NaturalEarthFeature
 from netCDF4 import Dataset
 from metpy.plots import USCOUNTIES, ctables
-from matplotlib.colors import Normalize
 from PIL import Image
-from datetime import datetime, timedelta
+from datetime import datetime
 import wrffuncs
-import cartopy.io.shapereader as shpreader
-import pyart
-import multiprocessing as mp
 
 """
 A foundation for using a multi processor loop to speed up processing data

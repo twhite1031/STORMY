@@ -1,15 +1,11 @@
 import numpy as np
 from matplotlib import pyplot
-from matplotlib.cm import get_cmap
 from matplotlib.colors import from_levels_and_colors
-from cartopy import crs
-from cartopy.feature import NaturalEarthFeature, COLORS
 from netCDF4 import Dataset
 from wrf import (getvar, to_np, get_cartopy, latlon_coords, vertcross,
-                 cartopy_xlim, cartopy_ylim, interpline, CoordPair)
+                 interpline, CoordPair)
 import wrffuncs
-from datetime import datetime, timedelta
-import glob
+from datetime import datetime
 import pandas as pd
 """
 A cross section of reflectivity given a start and end point

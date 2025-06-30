@@ -1,22 +1,14 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import imageio
 import os
 import concurrent.futures
-from wrf import (to_np, getvar, smooth2d, get_cartopy, cartopy_xlim, cartopy_ylim, latlon_coords,extract_times)
-from matplotlib.cm import (get_cmap,ScalarMappable)
-import glob
+from wrf import (to_np, getvar, get_cartopy, cartopy_xlim, cartopy_ylim, latlon_coords)
 import cartopy.crs as crs
 import cartopy.feature as cfeature
 from cartopy.feature import NaturalEarthFeature
 from netCDF4 import Dataset
-from metpy.plots import USCOUNTIES, ctables
-from matplotlib.colors import Normalize
-from PIL import Image
-from datetime import datetime,timedelta
-import cartopy.io.shapereader as shpreader
-import pyart
-import multiprocessing as mp
+from metpy.plots import USCOUNTIES
+from datetime import datetime
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 import matplotlib.ticker as mticker
 import wrffuncs
@@ -28,14 +20,14 @@ A GIF will be made using the plots between the time periods
 """
 # --- USER INPUT ---
 
-wrf_date_time = datetime(1997,1,12,1,52,00)
+wrf_date_time = datetime(2022,11,17,23,40,00)
 domain = 2
 
 SIMULATION = "NORMAL" # If comparing runs
 
 # Path to each WRF run (NORMAL & FLAT)
-path_N = f"/data2/white/WRF_OUTPUTS/SEMINAR/NORMAL_ATTEMPT/"
-path_F = f"/data2/white/WRF_OUTPUTS/SEMINAR/FLAT_ATTEMPT/"
+path_N = r"C:\Users\thoma\Documents\WRF_OUTPUTS"
+path_F = r"C:\Users\thoma\Documents\WRF_OUTPUTS"
 
 # --- END USER INPUT ---
 
@@ -86,14 +78,15 @@ def generate_frame(args):
 
     # Download and add the states, lakes  and coastlines
         states = NaturalEarthFeature(category="cultural", scale="50m", facecolor="none", name="admin_1_states_provinces")
+       
         ax_N.add_feature(states, linewidth=.1, edgecolor="black")
         ax_N.add_feature(cfeature.LAKES.with_scale('50m'),linewidth=1, facecolor="none",  edgecolor="black")
         ax_N.coastlines('50m', linewidth=1)
         ax_N.add_feature(USCOUNTIES, alpha=0.1)
+   
         print("Made land features")
     # Set the map bounds
-        ax_N.set_xlim(cartopy_xlim(SWE_N))
-        ax_N.set_ylim(cartopy_ylim(SWE_N))
+        WRF_xylims(SWE_N, ax_N)
         print("Set map bounds")
 
     # Add the gridlines
@@ -108,10 +101,13 @@ def generate_frame(args):
         gl_N.xlocator = mticker.FixedLocator([-77.5,-76.5,-75.5])  # Set longitude gridlines every 10 degrees
         gl_N.ylocator = mticker.FixedLocator(np.arange(41, 47, .5))    # Set latitude gridlines every 10 degrees
 
-        print("Made gridlines")
-
-    # Download and add the states, lakes  and coastlines
+        
         ax_F.add_feature(states, linewidth=.1, edgecolor="black")
+        ax_F.add_feature(cfeature.LAKES.with_scale('50m'),linewidth=1, facecolor="none",  edgecolor="black")
+        ax_F.coastlines('50m', linewidth=1)
+        ax_F.add_feature(USCOUNTIES, alpha=0.1)
+        
+        print("ax_F does not support add_feature. Make sure ax_F is a Cartopy GeoAxes.")
         ax_F.add_feature(cfeature.LAKES.with_scale('50m'),linewidth=1, facecolor="none",  edgecolor="black")
         ax_F.coastlines('50m', linewidth=1)
         ax_F.add_feature(USCOUNTIES, alpha=0.1)
@@ -180,6 +176,10 @@ def generate_frame(args):
         return filename
     except IndexError:
         print("Error processing files")
+
+def WRF_xylims(SWE_N, ax_N):
+    ax_N.set_xlim(tuple(to_np(cartopy_xlim(SWE_N))))
+    ax_N.set_ylim(tuple(to_np(cartopy_ylim(SWE_N))))
  
 if __name__ == "__main__":
 

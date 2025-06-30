@@ -1,18 +1,14 @@
 import numpy as np
 from matplotlib import pyplot
-from matplotlib.cm import get_cmap
-from matplotlib.colors import from_levels_and_colors
 from cartopy import crs
-from cartopy.feature import NaturalEarthFeature, COLORS
 from netCDF4 import Dataset
 from wrf import (getvar, to_np, get_cartopy, latlon_coords, vertcross,
-                 cartopy_xlim, cartopy_ylim, interpline, CoordPair,xy_to_ll)
+                 interpline, CoordPair)
 import cartopy.io.shapereader as shpreader
 import cartopy.feature as cfeature
 import datetime
-import os
 from matplotlib.gridspec import GridSpec
-from datetime import datetime, timedelta
+from datetime import datetime
 import wrffuncs
 import string
 import pandas as pd

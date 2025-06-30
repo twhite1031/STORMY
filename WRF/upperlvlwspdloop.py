@@ -1,26 +1,18 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import imageio
 import os
-import concurrent.futures
-from wrf import (getvar, interplevel, to_np, latlon_coords, get_cartopy,cartopy_xlim, cartopy_ylim,extract_times)
-from matplotlib.cm import (get_cmap,ScalarMappable)
-import glob
+from wrf import (getvar, interplevel, to_np, latlon_coords, get_cartopy,cartopy_xlim, cartopy_ylim)
+from matplotlib.cm import (get_cmap)
 import cartopy.crs as crs
 import cartopy.feature as cfeature
 from cartopy.feature import NaturalEarthFeature
 from netCDF4 import Dataset
-from metpy.plots import USCOUNTIES, ctables
-from matplotlib.colors import Normalize
+from metpy.plots import USCOUNTIES
 from PIL import Image
-from datetime import datetime,timedelta
-import cartopy.io.shapereader as shpreader
-import pyart
-import multiprocessing as mp
+from datetime import datetime
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
-import matplotlib.ticker as mticker
 import wrffuncs
-import string
+
 """
 A side by side comparison of two WRF runs using plots of simulated reflectivity ('mdbz)
 A GIF will be made using the plots between the time periods
@@ -29,14 +21,14 @@ A GIF will be made using the plots between the time periods
 # MAY NEED TO USE IN SHELL
 #export PROJ_NETWORK=OFF
 # --- USER INPUT ---
-start_time, end_time  = datetime(2023,1,9,7,40,00), datetime(2023, 1, 9,7, 55, 00)
+start_time, end_time  = datetime(2022,11,17,23,20,00), datetime(2022, 11, 17,23, 40, 00)
 domain = 2
 height = 850
 # Path to each WRF run (NORMAL & FLAT)
-path = f"/data2/white/wrf/WRFV4.5.2/run/"
+path = r"C:\Users\thoma\Documents\WRF_OUTPUTS"
 
 # Path to save GIF or Files
-savepath = f""
+savepath = r"C:\Users\thoma\Documents\WRF_OUTPUTS"
 
 # --- END USER INPUT ---
 time_df = wrffuncs.build_time_df(path, domain)
@@ -48,6 +40,7 @@ time_df = time_df[mask].reset_index(drop=True)
 filelist = time_df["filename"].tolist()
 timeidxlist = time_df["timeidx"].tolist()
 
+print(filelist)
 # ---- Function to Loop (Each Frame) ----
 def generate_frame(args):
     print("Starting generate frame")
@@ -60,7 +53,8 @@ def generate_frame(args):
             z = getvar(ncfile, "z", units="dm")
             ua = getvar(ncfile, "ua", units="kt")
             va = getvar(ncfile, "va", units="kt")
-            wspd = getvar(ncfile, "uvmet_wspd_wdir", units="kts")[0,:]
+            wspd = getvar(ncfile, "uvmet_wspd_wdir", units="kts")
+            wpsd = wspd[0,:]  # type: ignore # Extract wind speed from the first element of the tuple
 
         #print("Read in WRF data")
         cart_proj = get_cartopy(p)
@@ -68,12 +62,12 @@ def generate_frame(args):
         ht_500 = interplevel(z, p, height)
         u_500 = interplevel(ua, p, height)
         v_500 = interplevel(va, p, height)
-        wspd_500 = interplevel(wspd, p, height)
+        wspd_500 = interplevel(wspd, p, height)[0,:]
 
     # Create a figure
         fig = plt.figure(figsize=(30,15),facecolor='white')
-        ax_N = plt.axes(projection=cart_proj)
-
+        ax_N = plt.axes(projection=crs.PlateCarree())
+        
         #print("Created Figures")
 
     # Get the latitude and longitude points
@@ -81,7 +75,7 @@ def generate_frame(args):
 
     # Download and add the states, lakes  and coastlines
         states = NaturalEarthFeature(category="cultural", scale="50m", facecolor="none", name="admin_1_states_provinces")
-        ax_N.add_feature(states, linewidth=.1, edgecolor="black")
+        ax_N.add_feature(states, linewidth=.1, edgecolor="black") # type: ignore
         ax_N.add_feature(cfeature.LAKES.with_scale('50m'),linewidth=1, facecolor="none",  edgecolor="black")
         ax_N.coastlines('50m', linewidth=1)
         ax_N.add_feature(USCOUNTIES, alpha=0.1)
@@ -111,8 +105,8 @@ def generate_frame(args):
       # Read in cmap and map contours
         hgt_interval = 6
         # Snap min down and max up
-        vmin = (np.min(ht_500) // hgt_interval) * hgt_interval
-        vmax = (np.max(ht_500) // hgt_interval + 1) * hgt_interval
+        vmin = (np.min(to_np(ht_500)) // hgt_interval) * hgt_interval
+        vmax = (np.max(to_np(ht_500)) // hgt_interval + 1) * hgt_interval
         print(vmax)
 
         # Create levels array
@@ -173,11 +167,15 @@ if __name__ == "__main__":
     print("Finished gathering tasks")
     
     # Use multiprocessing to generate frames in parallel
-    with concurrent.futures.ProcessPoolExecutor(max_workers=3) as executor: # Use ProcessPoolExecutor for CPU-bound tasks
-        print("Starting multiprocessing")
-        frame_filenames_gen = executor.map(generate_frame, tasks)
-        frame_filenames = list(frame_filenames_gen)  # Convert generator to list
-       
+    #with concurrent.futures.ProcessPoolExecutor(max_workers=3) as executor: # Use ProcessPoolExecutor for CPU-bound tasks
+    #    print("Starting multiprocessing")
+    #   frame_filenames_gen = executor.map(generate_frame, tasks)
+    #    frame_filenames = list(frame_filenames_gen)  # Convert generator to list
+    frame_filenames = []
+    for task in tasks:
+        result = generate_frame(task)
+        frame_filenames.append(result)
+
     # Create the GIF
     filtered_list = [filename for filename in frame_filenames if filename is not None]    
     create_gif(sorted(filtered_list), output_gif)

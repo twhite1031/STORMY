@@ -1,16 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from netCDF4 import Dataset
-import glob
-import os
 from datetime import datetime
 import wrffuncs # Personal library
-from wrf import (to_np, getvar, smooth2d, get_cartopy, cartopy_xlim, cartopy_ylim, latlon_coords,extract_times)
-import cartopy.io.shapereader as shpreader
-import cartopy.feature as cfeature
-import cartopy.crs as crs
-from matplotlib.colors import LinearSegmentedColormap
-from datetime import datetime, timedelta
+from wrf import (to_np, getvar)
+from datetime import datetime
 
 """
 Creates a time line plot of the average of Planetary Boundary Layer (PBL) Height
@@ -18,16 +12,16 @@ between start time and end time for two simulations
 """
 
 # --- USER INPUT ---
-start_time, end_time  = datetime(1997,1,10,00,00,00), datetime(1997, 1, 10,1, 00, 00)
+start_time, end_time  = datetime(2022,11,17,00,00,00), datetime(2022, 11, 22,1, 00, 00)
 domain = 2
 var = 'PBLH'
 
 # Path to each WRF run (NORMAL & FLAT)
-path_N = f"/data2/white/WRF_OUTPUTS/SEMINAR/NORMAL_ATTEMPT/"
-path_F = f"/data2/white/WRF_OUTPUTS/SEMINAR/FLAT_ATTEMPT/"
+path_N = r"C:\Users\thoma\Documents\WRF_OUTPUTS"
+path_F = r"C:\Users\thoma\Documents\WRF_OUTPUTS"
 
 # Path to save GIF or Files
-savepath = f"/data2/white/WRF_OUTPUTS/SEMINAR/BOTH_ATTEMPT/"
+savepath = r"C:\Users\thoma\Documents\WRF_OUTPUTS"
 
 # --- END USER INPUT ---
 

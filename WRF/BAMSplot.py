@@ -1,14 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.cm import get_cmap
 import cartopy.crs as crs
 import cartopy.feature as cfeature
 from netCDF4 import Dataset
 from metpy.plots import ctables
-from wrf import (getvar, interpline, interplevel, to_np, vertcross, smooth2d, CoordPair, GeoBounds,
-                 get_cartopy, latlon_coords, cartopy_xlim, cartopy_ylim)
+from wrf import (getvar, to_np, get_cartopy, latlon_coords, cartopy_xlim, cartopy_ylim)
 import pyart
-from matplotlib.colors import Normalize, from_levels_and_colors
+from matplotlib.colors import from_levels_and_colors
 import cartopy.io.shapereader as shpreader
 from pyxlma.lmalib.io import read as lma_read
 

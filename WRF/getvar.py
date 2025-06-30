@@ -1,15 +1,10 @@
 from netCDF4 import Dataset
 import matplotlib.pyplot as plt
-from matplotlib.cm import (get_cmap,ScalarMappable)
-import matplotlib as mpl
-from matplotlib.colors import from_levels_and_colors
 import cartopy.crs as crs
 import cartopy.feature as cfeature
 from cartopy.feature import NaturalEarthFeature
-import numpy as np
-import matplotlib.colors as colors
-from wrf import (to_np, getvar, smooth2d, get_cartopy, cartopy_xlim, cartopy_ylim, latlon_coords,extract_times)
-from datetime import datetime, timedelta
+from wrf import (to_np, getvar, get_cartopy, cartopy_xlim, cartopy_ylim, latlon_coords)
+from datetime import datetime
 import wrffuncs
 import pandas as pd
 

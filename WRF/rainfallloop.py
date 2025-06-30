@@ -1,26 +1,18 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import imageio
 import os
 import concurrent.futures
-from wrf import (getvar, interplevel, to_np, latlon_coords, get_cartopy,cartopy_xlim, cartopy_ylim,extract_times)
-from matplotlib.cm import (get_cmap,ScalarMappable)
-import glob
+from wrf import (getvar, to_np, latlon_coords, get_cartopy,cartopy_xlim, cartopy_ylim)
+from matplotlib.cm import (get_cmap)
 import cartopy.crs as crs
 import cartopy.feature as cfeature
 from cartopy.feature import NaturalEarthFeature
 from netCDF4 import Dataset
-from metpy.plots import USCOUNTIES, ctables
-from matplotlib.colors import Normalize
+from metpy.plots import USCOUNTIES
 from PIL import Image
-from datetime import datetime,timedelta
-import cartopy.io.shapereader as shpreader
-import pyart
-import multiprocessing as mp
+from datetime import datetime
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
-import matplotlib.ticker as mticker
 import wrffuncs
-import string
 """
 A side by side comparison of two WRF runs using plots of simulated reflectivity ('mdbz)
 A GIF will be made using the plots between the time periods

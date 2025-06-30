@@ -1,7 +1,5 @@
 import xarray as xr
-import numpy as np
 from scipy.ndimage import gaussian_filter
-from skimage.restoration import denoise_bilateral
 
 # Load the geo_em file
 file_path = "geo_em.d01.nc"

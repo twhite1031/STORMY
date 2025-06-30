@@ -4,9 +4,8 @@ from matplotlib.cm import get_cmap
 import cartopy.crs as crs
 import cartopy.feature as cfeature
 from cartopy.feature import NaturalEarthFeature
-import numpy as np
-from wrf import (to_np, getvar, smooth2d, get_cartopy, cartopy_xlim,cartopy_ylim, latlon_coords,extract_times)
-from datetime import datetime, timedelta
+from wrf import (to_np, getvar, smooth2d, get_cartopy, cartopy_xlim,cartopy_ylim, latlon_coords)
+from datetime import datetime
 import wrffuncs
 import pandas as pd
 """

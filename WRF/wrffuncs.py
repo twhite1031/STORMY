@@ -72,7 +72,7 @@ def find_closest_radar_file(target_datetime, directory, radar_prefix=None):
 def parse_filename_datetime_wrf(filepath, timeidx, timeidx_interval=5):
     
     # Define the format of the datetime string in your filename
-        datetime_format = "wrfout_d02_%Y-%m-%d_%H:%M:%S"
+        datetime_format = "wrfout_d02_%Y-%m-%d_%H_%M_%S"
 
     # Parse the datetime string into a datetime object
         time_object = datetime.strptime(os.path.basename(filepath), datetime_format)

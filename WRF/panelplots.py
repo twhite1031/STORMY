@@ -6,11 +6,9 @@ import cartopy.feature as cfeature
 from netCDF4 import Dataset
 from matplotlib.cm import get_cmap
 
-from wrf import (getvar, interpline, to_np, vertcross, smooth2d, CoordPair, GeoBounds,
-                 get_cartopy, latlon_coords, cartopy_xlim, cartopy_ylim)
-from datetime import datetime, timedelta
+from wrf import (getvar, interpline, to_np, vertcross, smooth2d, CoordPair, get_cartopy, latlon_coords, cartopy_xlim, cartopy_ylim)
+from datetime import datetime
 import wrffuncs
-import os
 import pandas as pd
 """
 A three panel plot that shows a plan view of cloud top temperature with a cross section line.

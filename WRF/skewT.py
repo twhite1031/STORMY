@@ -6,7 +6,7 @@ import metpy.calc as mpcalc
 from metpy.plots import SkewT
 from metpy.units import units
 import wrffuncs
-from datetime import datetime, timedelta
+from datetime import datetime
 import pandas as pd
 """
 A standard script to make a skewT given a lat/lon point which finds 

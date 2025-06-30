@@ -1,22 +1,9 @@
 import numpy as np
-import matplotlib.pyplot as plt
-import imageio
-import os
 import concurrent.futures
-from wrf import (to_np, getvar, smooth2d, get_cartopy, cartopy_xlim, cartopy_ylim, latlon_coords,extract_times)
-from matplotlib.cm import (get_cmap,ScalarMappable)
-import glob
-import cartopy.crs as crs
-import cartopy.feature as cfeature
-from cartopy.feature import NaturalEarthFeature
+from wrf import (to_np, getvar)
 from netCDF4 import Dataset
-from metpy.plots import USCOUNTIES, ctables
-from matplotlib.colors import Normalize
-from PIL import Image
-from datetime import datetime, timedelta
-import cartopy.io.shapereader as shpreader
+from datetime import datetime
 import pyart
-import multiprocessing as mp
 import numpy.ma as ma
 import wrffuncs
 
