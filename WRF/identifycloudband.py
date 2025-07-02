@@ -6,7 +6,7 @@ import matplotlib.patches as patches
 from cartopy import crs
 from netCDF4 import Dataset
 from wrf import (getvar, to_np, get_cartopy, latlon_coords, vertcross,
-                 interpline, CoordPair, xy_to_ll,ll_to_xy)
+                 interpline, CoordPair, xy_to_ll,ll_to_xy,cartopy_xlim, cartopy_ylim)
 from scipy.ndimage import label
 import cartopy.feature as cfeature
 import wrffuncs
@@ -19,19 +19,17 @@ values based on a threshold, still in development.
 
 # --- USER INPUT ---
 
-wrf_date_time = datetime(2022,11,17,23,40,00)
+wrf_date_time = datetime(2022,11,18,13,50,00)
 domain = 2
-# Threshold to identify the snow band (e.g., reflectivity > 20 dBZ)
-threshold = 0
+# Threshold to identify the snow band (e.g., cloud fraction > .1)
+threshold = .95
 
-lat_lon = [42.93236445072291, -78.75472132204754]  # Example coordinates
+lat_lon = [43.86935, -76.164764]  # Coordinates to start cloud check
+ht_level = 15
 
 SIMULATION = 1 # If comparing runs
-# Path to each WRF run (NORMAL & FLAT)
-path = r"C:\Users\thoma\Documents\WRF_OUTPUTS"
-
-# Path to save GIF or Files
-savepath = r"C:\Users\thoma\Documents\WRF_OUTPUTS"
+path = f"/data2/white/WRF_OUTPUTS/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
+savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
 
 # --- END USER INPUT ---
 
@@ -57,39 +55,72 @@ with Dataset(matched_file) as ds:
     # Convert desired coorindates to WRF gridbox coordinates
     x_y = ll_to_xy(ds, lat_lon[0], lat_lon[1])
     ht = getvar(ds, "z", timeidx=matched_timeidx)
-    ter = getvar(ds, "ter", timeidx=matched_timeidx)
     dbz = getvar(ds, "dbz", timeidx=matched_timeidx)
     max_dbz = getvar(ds, "mdbz", timeidx=matched_timeidx)
     Z = 10**(dbz/10.) # Use linear Z for interpolation
     lats = getvar(ds, "lat", timeidx=matched_timeidx)
     lons = getvar(ds, "lon",timeidx=matched_timeidx)
-    ctt = getvar(ds, "ctt",timeidx=matched_timeidx)
-    cloud_frac = getvar(ds, "CLDFRA",timeidx=matched_timeidx,meta=False)[30,:,:]  # Assuming CLDFRA is at level 10
+    cloud_frac = getvar(ds, "CLDFRA",timeidx=matched_timeidx)[:,:,:]  # Assuming CLDFRA is at level 10
+
+    # Multiply by 1000 to go from kg/kg to g/kg
+    wv = getvar(ds, "QVAPOR", timeidx=matched_timeidx,meta=False) * 1000
+    snow = getvar(ds, "QSNOW", timeidx=matched_timeidx,meta=False) * 1000
+    ice = getvar(ds, "QICE", timeidx=matched_timeidx,meta=False) * 1000
+    graupel  = getvar(ds, "QGRAUP", timeidx=matched_timeidx,meta=False) * 1000
 
 lats = to_np(lats)
 lons = to_np(lons)
 
+# Step 1: Define the 2D mask at level 15
+base_level = 15
+snow_band_2d = cloud_frac[base_level, :, :] >= threshold
 
-snow_band = cloud_frac > threshold
-print(snow_band)
+# Step 2: Label connected horizontal regions
+labeled_2d, num_features = label(snow_band_2d)
 
-# Label the connected regions in the snow band
-labeled_array, num_features = label(snow_band)
-
-
-
-# Find the label of the connected region that includes the starting grid box
-start_label = labeled_array[x_y[1], x_y[0]]
+# Step 3: Get the label at the starting point (x_y = [lon_idx, lat_idx])
+start_label = labeled_2d[x_y[1], x_y[0]]
 
 if start_label == 0:
-    print("Starting point is not part of any connected region above threshold.")
-    cloud_region_mask = np.zeros_like(snow_band, dtype=bool)
+    print("Starting point not in any region.")
+    cloud_region_mask = np.zeros_like(cloud_frac, dtype=bool)
 else:
-    # Mask only the region connected to the starting point
-    cloud_region_mask = (labeled_array == start_label)
+    # Step 4: Get the 2D footprint of the connected region
+    region_mask_2d = (labeled_2d == start_label)
 
-lat_inds, lon_inds = np.where(cloud_region_mask)
+    # Step 5: Extend vertically, only in columns that are part of the base region
+    cloud_region_mask = np.zeros_like(cloud_frac, dtype=bool)
+    for z in range(cloud_frac.shape[0]):
+        cloud_region_mask[z, :, :] = region_mask_2d & (cloud_frac[z, :, :] >= threshold)
 
+cloud_heights = np.where(cloud_region_mask, ht, np.nan)
+mean_height = np.nanmean(cloud_heights)
+print(f"Mean cloud height at level {ht_level}: {mean_height:.1f} m")
+z_inds, lat_inds, lon_inds = np.where(cloud_region_mask)
+
+# Isolate Mixing Ratio to Cloud Bands
+wv_cloud = wv[cloud_region_mask]
+snow_cloud = snow[cloud_region_mask]
+ice_cloud = ice[cloud_region_mask]
+graupel_cloud = graupel[cloud_region_mask]
+
+snow_avg = np.nanmean(snow_cloud)
+print(f"Snow Avg: {snow_avg:.6f}")
+
+graupel_avg = np.nanmean(graupel_cloud)
+print(f"Graupel Avg: {graupel_avg:.6f}")
+
+ice_avg = np.nanmean(ice_cloud)
+print(f"Ice Avg: {ice_avg:.6f}")
+
+wv_avg = np.nanmean(wv_cloud)
+print(f"Water Vapor Avg: {wv_avg:.6f}")
+
+
+if len(lat_inds) == 0 or len(lon_inds) == 0:
+    print("No grid boxes in the cloud region.")
+else:
+    print(f"Cloud region has {len(lat_inds)} grid points")
 min_y, max_y = lat_inds.min(), lat_inds.max()
 min_x, max_x = lon_inds.min(), lon_inds.max()
 
@@ -116,18 +147,31 @@ land = cfeature.NaturalEarthFeature(category='physical', name='land',
 lakes = cfeature.NaturalEarthFeature(category='physical',name='lakes',scale='50m',facecolor="none",edgecolor="blue")
 ocean = cfeature.NaturalEarthFeature(category='physical', name='ocean',
                                      scale='50m',
-                                     facecolor=cfeature.COLORS['water'])
-# Your main field (e.g., reflectivity)
-ax.pcolormesh(lons, lats, max_dbz, cmap="viridis")  # assuming 2D lat/lon
+                                    facecolor=cfeature.COLORS['water'])
 
-# Draw the bounding box
-rect = patches.Rectangle(
-    (lons[min_y, min_x], lats[min_y, min_x]),                # bottom-left corner
-    lons[max_y, max_x] - lons[min_y, min_x],                 # width
-    lats[max_y, max_x] - lats[min_y, min_x],                 # height
-    linewidth=2, edgecolor='red', facecolor='none'
+# Add Cartopy features
+ax.add_feature(land,zorder=0)
+ax.add_feature(ocean,zorder=0)
+ax.add_feature(lakes,zorder=0)
+ax.add_feature(states, edgecolor='gray',zorder=2)
+
+# Your main field (e.g., reflectivity)
+#cf = ax.contour(lons, lats, max_dbz, transform=crs.PlateCarree(),cmap="viridis",vmin=10,vmax=40,zorder=1)  # assuming 2D lat/lon
+
+# Collapse the 3D Mask into 2D for plotting. Basically saying that if any level is true, show it as a cloud (Filled) on plot
+cloud_mask_2d = np.max(cloud_region_mask, axis=0)
+cf = ax.contourf(
+    to_np(lons), to_np(lats), to_np(cloud_mask_2d.astype(float)),
+    levels=[0.5, 1.5],              # Fill values above 0.5
+    colors=['red'], alpha=0.3,      # Set fill color and transparency
+    transform=crs.PlateCarree(), zorder=4
 )
-ax.add_patch(rect)
+plt.colorbar(cf, ax=ax, orientation="vertical", label="Max Ref")
+
+# Set the map bounds
+ax.set_xlim(cartopy_xlim(dbz))
+ax.set_ylim(cartopy_ylim(dbz))
+
 
 plt.title("Cloud region linked to flash")
 plt.xlabel("Longitude")
