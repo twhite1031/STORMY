@@ -10,6 +10,7 @@ from metpy.units import units
 import wrffuncs
 from datetime import datetime
 import pandas as pd
+
 """
 A Three Panel Plot for forecasting Lake-effect Snow
 1. Wind Barbs
@@ -21,7 +22,7 @@ A Three Panel Plot for forecasting Lake-effect Snow
 
 wrf_date_time = datetime(1997,1,12,1,52,00)
 domain = 2
-height = 850
+height = 850 # Pressure level for Wind Barbs
 
 SIMULATION = 1 # If comparing runs
 path = f"/data2/white/WRF_OUTPUTS/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
@@ -29,10 +30,11 @@ savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}
 
 # --- END USER INPUT ---
 
+# Build/Find the time data for the model runs
 time_df = wrffuncs.build_time_df(path, domain)
 obs_time = pd.to_datetime(wrf_date_time)
 
-# Compute absolute time difference
+# Compute absolute time difference between model times and input time
 closest_idx = (time_df["time"] - obs_time).abs().argmin()
 
 # Extract the matched row
@@ -45,7 +47,7 @@ matched_time = match["time"]
 
 print(f"Closest match: {matched_time} in file {matched_file} at time index {matched_timeidx}")
 
-# Open only the matched WRF file
+# Open only the matched WRF file for the given time
 with Dataset(matched_file) as ds:
     z     = getvar(ds, "z", timeidx=matched_timeidx)
     mdbz  = getvar(ds, "mdbz", timeidx=matched_timeidx)
@@ -62,10 +64,10 @@ t2 = to_np(t2) * units.kelvin
 t2 = t2.to('degC')
 t2 = t2.magnitude
 
+# Interpolate temperature, height, u, and v winds to desired height level
 temp_850 = interplevel(tc, p, 850) 
 les_temp_diff = t2 - to_np(temp_850)
 
-# Interpolate geopotential height, u, and v winds to desired height level
 ht = interplevel(z, p, height)
 u = interplevel(ua, p, height)
 v = interplevel(va, p, height)
@@ -107,8 +109,8 @@ ocean = cfeature.NaturalEarthFeature(category='physical', name='ocean',
 contour_levels = [15, 20, 25, 30, 35, 40, 50, 60, 70, 80, 90, 100, 110, 120]
 c1 = ax_hgt.contourf(lons, lats, to_np(wspd), levels=contour_levels, cmap=get_cmap("rainbow"), transform=crs.PlateCarree(), zorder=2)
 
-# Create the 500 hPa geopotential height contours
-contour_levels = np.arange(1320., 1620., 30.)
+# Create the geopotential height contours
+contour_levels = np.arange(1320., 1620.1, 30.)
 hgt_contours = ax_hgt.contour(to_np(lons), to_np(lats), to_np(ht), contour_levels, colors="black", transform=crs.PlateCarree(), zorder=3)
 ax_hgt.clabel(hgt_contours,inline=1, fontsize=10, fmt="%i")
 
@@ -117,7 +119,7 @@ cbar = fig.colorbar(c1, ax=ax_hgt, orientation="horizontal", pad=.05)
 cbar.set_label('Knots',fontsize=14)
 
 
-# Add the 500 hPa wind barbs, only plotting every nth data point.
+# Add the wind barbs, only plotting every nth data point.
 ax_hgt.barbs(to_np(lons[::40,::40]), to_np(lats[::40,::40]),
         to_np(u[::40,::40]), to_np(v[::40,::40]),
           transform=crs.PlateCarree(), length=6,zorder=4)
@@ -139,6 +141,7 @@ ax_temp_diff.add_feature(states, linewidth=.5, edgecolor="black")
 ax_temp_diff.add_feature(lakes)
 ax_temp_diff.add_feature(ocean)
 
+# Set the extent of the map to the data
 ax_temp_diff.set_xlim(cartopy_xlim(mdbz))
 ax_temp_diff.set_ylim(cartopy_ylim(mdbz))
 
@@ -163,16 +166,18 @@ ax_temp_diff.set_ylabel("Lattitude", fontsize=8)
 
 # Adjust format for date to use in figure
 date_format = wrf_date_time.strftime("%Y-%m-%d %H:%M:%S")
+
 # Add a shared title at the top with the time label
 fig.suptitle(date_format, fontsize=16, fontweight='bold')
 
-# Add a title
+# Add a title to each plot
 ax_hgt.set_title("Simulated 850hPa Wind Speed and Direction (Knots)", fontsize="14")
 ax_dbz.set_title("Simulated Composite Reflectivity (dBZ)", fontsize="14")
 ax_temp_diff.set_title("Surface - 850hPa Temperature (degC)", fontsize="14")
 
-# Format it for a filename (no spaces/colons)
+# Format date for a filename (no spaces/colons)
 time_str = matched_time.strftime("%Y-%m-%d_%H-%M-%S")
+
 # Use in filename
 filename = f"4castLES_{time_str}.png"
 

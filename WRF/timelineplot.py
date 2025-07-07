@@ -16,15 +16,14 @@ start_time, end_time  = datetime(2022,11,17,00,00,00), datetime(2022, 11, 22,1, 
 domain = 2
 var = 'PBLH'
 
-# Path to each WRF run (NORMAL & FLAT)
+# Path to each WRF run 
 path_N = r"C:\Users\thoma\Documents\WRF_OUTPUTS"
 path_F = r"C:\Users\thoma\Documents\WRF_OUTPUTS"
-
-# Path to save GIF or Files
 savepath = r"C:\Users\thoma\Documents\WRF_OUTPUTS"
 
 # --- END USER INPUT ---
 
+# Build/Find the time data for the model runs
 time_df_N = wrffuncs.build_time_df(path_N, domain)
 time_df_F = wrffuncs.build_time_df(path_F, domain)
 

@@ -10,22 +10,18 @@ A line plot of integrated water vapor using the mixing ratio given from
 WRF output with the ideal gas law and area of each gridbox.
 """
 
-# MAY NEED TO USE IN SHELL
-#export PROJ_NETWORK=OFF
-
 # --- USER INPUT ---
 start_time, end_time  = datetime(1997,1,10,00,2,00), datetime(1997, 1, 10,00, 18, 00)
 domain = 2
 
-# Path to each WRF run (NORMAL & FLAT)
+# Path to each WRF run 
 path_N = f"/data2/white/WRF_OUTPUTS/SEMINAR/NORMAL_ATTEMPT/"
 path_F = f"/data2/white/WRF_OUTPUTS/SEMINAR/FLAT_ATTEMPT/"
-
-# Path to save GIF or Files
 savepath = f"/data2/white/WRF_OUTPUTS/SEMINAR/BOTH_ATTEMPT/"
 
 # --- END USER INPUT ---
 
+# Build/Find the time data for the model runs
 time_df_N = wrffuncs.build_time_df(path_N, domain)
 time_df_F = wrffuncs.build_time_df(path_F, domain)
 
@@ -39,7 +35,6 @@ time_df_F = time_df_F[mask_F].reset_index(drop=True)
 filelist_N = time_df_N["filename"].tolist()
 filelist_F = time_df_F["filename"].tolist()
 timeidxlist = time_df_N["timeidx"].tolist()
-
 
 # ---- End User input for file ----
 def generate_frame(file_path_N, file_path_F, timeidx):
@@ -59,8 +54,6 @@ def generate_frame(file_path_N, file_path_F, timeidx):
         final_mask = lat_mask & lon_mask
         print(f"Total grid points in region: {np.count_nonzero(final_mask)}")
     
-
-          
         # Apply the mask to WRF data
         #masked_data = np.where(region_mask, lat, np.nan)
     
@@ -86,7 +79,6 @@ def generate_frame(file_path_N, file_path_F, timeidx):
             ICE_F = getvar(wrfin2, "QICE", timeidx=timeidx,meta=False) * 1000
             GRA_F = getvar(wrfin2, "QGRAUP", timeidx=timeidx,meta=False) * 1000
 
-        
         print("Read in WRF data")
                
         # Apply horizontal mask
@@ -101,13 +93,11 @@ def generate_frame(file_path_N, file_path_F, timeidx):
         ICE_region_N = ICE_N[:, final_mask]
         GRA_region_N = GRA_N[:, final_mask]
 
-
         # Compute air density (ρ) using the ideal gas law
         Rd = 287.05  # Gas constant for dry air (J/kg·K)
         rho_N = (P_region_N * 100) / (Rd * T_region_N)  # Convert hPa to Pa for pressure
         print(f"rho_N {rho_N}")
       
-
         # Apply horizontal mask
         print(file_path_F)
         WV_region_F = WV_F[:, final_mask]
@@ -140,7 +130,6 @@ def generate_frame(file_path_N, file_path_F, timeidx):
         dV_N = dx * dy * dz_N # Grid cell volume (m³)
         dV_F = dx * dy * dz_F  # Grid cell volume (m³)
         
-
         # Compute total water vapor mass in region (sum over all grid cells)
         print(f"dZ_N: {dz_N}")
         print(f"dZ_F: {dz_F}")

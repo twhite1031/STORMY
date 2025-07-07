@@ -10,23 +10,24 @@ from cartopy.feature import ShapelyFeature
 from shapely.geometry import Polygon
 import wrffuncs
 import pandas as pd
+
 """
 A plot of a box given the bounds using the same display as your WRF domain, useful if working
 with subregions to see what area your focusing on
 """
 
 # --- USER INPUT ---
-
 wrf_date_time = datetime(1997,1,12,1,52,00)
 domain = 2
-# Bottom left corner , Top right corner for box
-lat_lon = [(44.25, -76.25), (43.25,-74.25)]
+
+lat_lon = [(44.25, -76.25), (43.25,-74.25)] # Bottom left corner , Top right corner for box
 
 SIMULATION = "NORMAL" # If comparing runs
 path = f"/data2/white/WRF_OUTPUTS/SEMINAR/{SIMULATION}_ATTEMPT/"
 
 # --- END USER INPUT ---
 
+# Build/Find the time data for the model runs
 time_df = wrffuncs.build_time_df(path, domain)
 obs_time = pd.to_datetime(wrf_date_time)
 
@@ -42,7 +43,6 @@ matched_timeidx = match["timeidx"]
 matched_time = match["time"]
 
 print(f"Closest match: {matched_time} in file {matched_file} at time index {matched_timeidx}")
-
 
 def generate_frame(wrffile, timeidx):
     try:
@@ -78,6 +78,7 @@ def generate_frame(wrffile, timeidx):
         # Add a colorbar
         cbar = plt.colorbar(elev_contour, ax=ax, orientation='vertical', shrink=0.7, pad=0.02)
         cbar.set_label("Terrain Elevation (m)", fontsize=16)
+        
     # Add the gridlines
         gl = ax.gridlines(color="black", linestyle="dotted",draw_labels=True, x_inline=False, y_inline=False)
         gl.xlabel_style = {'rotation': 'horizontal','size': 22,'ha':'center'} # Change 14 to your desired font size
@@ -90,12 +91,16 @@ def generate_frame(wrffile, timeidx):
     
         lat1, lon1 = lat_lon[0][0], lat_lon[0][1]  # Bottom-left corner
         lat2, lon2 = lat_lon[1][0], lat_lon[1][1] # Top-right corner
+
         # Define the coordinates of the square (in order)
         coordinates = [(lon1, lat1), (lon2, lat1), (lon2, lat2), (lon1, lat2), (lon1, lat1)]
         polygon = Polygon(coordinates
                 )
+        
         # Create a feature for the polygon
         square_feature = ShapelyFeature([polygon], crs.PlateCarree(), edgecolor='red', facecolor='none',linewidth=3)
+
+        # Define important locations to plot
         locations = {
             "KTYX Radar": {
                 "coords": (43.755, -75.68),
@@ -104,11 +109,12 @@ def generate_frame(wrffile, timeidx):
             }
         }
         
-        #for name, info in locations.items():
-        #   lat, lon = info["coords"]
-        #    ax.plot(lon, lat, marker=info["marker"], color=info["color"], markersize=10, transform=crs.PlateCarree(), zorder=10)
-        #    ax.text(lon + 0.05, lat + 0.05, name, fontsize=16, weight='bold', transform=crs.PlateCarree(), zorder=10,
-        #    bbox=dict(facecolor='white', alpha=0.7, boxstyle='round,pad=0.3'))
+        # Add the locations to the plot
+        for name, info in locations.items():
+           lat, lon = info["coords"]
+           ax.plot(lon, lat, marker=info["marker"], color=info["color"], markersize=10, transform=crs.PlateCarree(), zorder=10)
+           ax.text(lon + 0.05, lat + 0.05, name, fontsize=16, weight='bold', transform=crs.PlateCarree(), zorder=10,
+           bbox=dict(facecolor='white', alpha=0.7, boxstyle='round,pad=0.3'))
                 
 
         # Add the square to the plot

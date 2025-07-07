@@ -23,12 +23,11 @@ domain = 2
 
 SIMULATION = "NORMAL"
 path = f"/data2/white/WRF_OUTPUTS/SEMINAR/{SIMULATION}_ATTEMPT/"
-
-# Path to save GIF or Files
 savepath = f"/data2/white/WRF_OUTPUTS/SEMINAR/{SIMULATION}_ATTEMPT/"
 
 # --- END USER INPUT ---
 
+# Build/Find the time data for the model runs
 time_df = wrffuncs.build_time_df(path, domain)
 
 # Filter time range
@@ -36,18 +35,16 @@ mask = (time_df["time"] >= start_time) & (time_df["time"] <= end_time)
 
 time_df = time_df[mask].reset_index(drop=True)
 
-
 filelist = time_df["filename"].tolist()
 timeidxlist = time_df["timeidx"].tolist()
-
 
 # ---- Function to Loop (Each Frame) ----
 
 def generate_frame(args):
+
     print("Starting generate frame")
     file_path, timeidx = args    
 
-    
     try:
    
     # Read data from file
@@ -128,8 +125,6 @@ def create_gif(frame_filenames, output_filename):
     frames[0].save(savepath + output_filename, format='GIF', append_images=frames[1:],save_all=True,duration=75, loop=0)
     
 if __name__ == "__main__":
-    
-  
     # Generate tasks
     tasks = zip(filelist, timeidxlist)
     output_gif = f'{SIMULATION}loopD{domain}{start_time.month:02d}{start_time.day:02d}{start_time.hour:02d}{start_time.minute:02d}to{end_time.month:02d}{end_time.day:02d}{end_time.hour:02d}{end_time.minute:02d}.gif'

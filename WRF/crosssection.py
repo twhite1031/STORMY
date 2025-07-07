@@ -7,6 +7,7 @@ from wrf import (getvar, to_np, get_cartopy, latlon_coords, vertcross,
 import wrffuncs
 from datetime import datetime
 import pandas as pd
+
 """
 A cross section of reflectivity given a start and end point
 """
@@ -22,10 +23,11 @@ savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}
 
 # --- END USER INPUT ---
 
+# Build/Find the time data for the model runs
 time_df = wrffuncs.build_time_df(path, domain)
 obs_time = pd.to_datetime(wrf_date_time)
 
-# Compute absolute time difference
+# Compute absolute time difference between model times and input time
 closest_idx = (time_df["time"] - obs_time).abs().argmin()
 
 # Extract the matched row
@@ -37,6 +39,7 @@ matched_timeidx = match["timeidx"]
 matched_time = match["time"]
 
 print(f"Closest match: {matched_time} in file {matched_file} at time index {matched_timeidx}")
+
 
 # Define the cross section start and end points
 cross_start = CoordPair(lat=lat_lon[0][0], lon=lat_lon[0][1])
@@ -50,6 +53,7 @@ with Dataset(matched_file) as ds:
     max_dbz = getvar(ds, "mdbz", timeidx=matched_timeidx)
 
 Z = 10**(dbz/10.) # Use linear Z for interpolation
+
 # Compute the vertical cross-section interpolation.  Also, include the lat/lon points along the cross-section in the metadata by setting latlon to True.
 z_cross = vertcross(Z, ht, wrfin=Dataset(matched_file), start_point=cross_start, end_point=cross_end, latlon=True, meta=True)
 
@@ -67,8 +71,9 @@ dbz_cross.attrs["units"] = "dBZ"
 # staggering, fill in the lower grid cells with the first non-missing value
 # for each column.
 
-# Make a copy of the z cross data. Let's use regular numpy arrays for this.
+# Make a copy of the z cross data. 
 dbz_cross_filled = np.ma.copy(to_np(dbz_cross))
+
 # For each cross section column, find the first index with non-missing
 # values and copy these to the missing elements below.
 for i in range(dbz_cross_filled.shape[-1]):

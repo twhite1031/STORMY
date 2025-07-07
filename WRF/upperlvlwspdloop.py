@@ -18,19 +18,19 @@ A side by side comparison of two WRF runs using plots of simulated reflectivity 
 A GIF will be made using the plots between the time periods
 """
 
-# MAY NEED TO USE IN SHELL
-#export PROJ_NETWORK=OFF
 # --- USER INPUT ---
 start_time, end_time  = datetime(2022,11,17,23,20,00), datetime(2022, 11, 17,23, 40, 00)
 domain = 2
-height = 850
-# Path to each WRF run (NORMAL & FLAT)
-path = r"C:\Users\thoma\Documents\WRF_OUTPUTS"
 
-# Path to save GIF or Files
+height = 850 # Pressure level for Wind Barbs
+
+SIMULATION = 1 # If comparing runs
+path = r"C:\Users\thoma\Documents\WRF_OUTPUTS"
 savepath = r"C:\Users\thoma\Documents\WRF_OUTPUTS"
 
 # --- END USER INPUT ---
+
+# Build/Find the time data for the model runs
 time_df = wrffuncs.build_time_df(path, domain)
 
 mask = (time_df["time"] >= start_time) & (time_df["time"] <= end_time)

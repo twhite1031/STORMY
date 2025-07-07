@@ -9,22 +9,22 @@ from metpy.plots import USCOUNTIES
 import pandas as pd
 from datetime import datetime
 import wrffuncs
-# --- USER INPUT ---
 
+# --- USER INPUT ---
 wrf_date_time = datetime(2018,5,15,18,00,00)
 domain = 2
 
-savefig = True
 windbarbs = False
-gridlines = False
 
 SIMULATION = 1 # If comparing runs
-path = f"/data2/white/WRF_OUTPUTS/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
-savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
+path = f"/data2/white/WRF_OUTPUTS/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/" # Path to WRF output files
+savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/" # Path to save plots
 
-storm_path = "/data1/white/Downloads/MET416/Storm_reports/"
+storm_path = "/data1/white/Downloads/MET416/Storm_reports/" # Path to storm report file (if needed)
+
 # --- END USER INPUT ---
 
+# Build/Find the time data for the model runs
 time_df = wrffuncs.build_time_df(path, domain)
 obs_time = pd.to_datetime(wrf_date_time)
 
@@ -40,6 +40,7 @@ matched_timeidx = match["timeidx"]
 matched_time = match["time"]
 
 print(f"Closest match: {matched_time} in file {matched_file} at time index {matched_timeidx}")
+
 '''
 # Open storm report file
 df = pd.read_csv(storm_path + "180515_rpts_torn.csv", index_col=False,sep=",", header=0,

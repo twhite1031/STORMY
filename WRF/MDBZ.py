@@ -8,21 +8,24 @@ import wrffuncs
 from datetime import datetime
 from metpy.plots import ctables
 import pandas as pd
+
 """
 Plot of the simulated composite reflectivty ('mdbz') with/without wind barbs
 """
 
 # --- USER INPUT ---
-
 wrf_date_time = datetime(1997,1,12,1,52,00)
 domain = 2
+
 windbarbs = True
 
 SIMULATION = 1 # If comparing runs
 path = f"/data2/white/WRF_OUTPUTS/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
 savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
+
 # --- END USER INPUT ---
 
+# Build/Find the time data for the model runs
 time_df = wrffuncs.build_time_df(path, domain)
 obs_time = pd.to_datetime(wrf_date_time)
 

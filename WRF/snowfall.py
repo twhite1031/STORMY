@@ -14,23 +14,22 @@ import matplotlib.ticker as mticker
 import wrffuncs
 import string
 import pandas as pd
+
 """
 A side by side comparison of two WRF runs using plots of simulated reflectivity ('mdbz)
 A GIF will be made using the plots between the time periods
 """
 # --- USER INPUT ---
-
 wrf_date_time = datetime(2022,11,17,23,40,00)
 domain = 2
 
 SIMULATION = "NORMAL" # If comparing runs
-
-# Path to each WRF run (NORMAL & FLAT)
 path_N = r"C:\Users\thoma\Documents\WRF_OUTPUTS"
 path_F = r"C:\Users\thoma\Documents\WRF_OUTPUTS"
 
 # --- END USER INPUT ---
 
+# Build/Find the time data for the model runs
 time_df_N = wrffuncs.build_time_df(path_N, domain)
 time_df_F = wrffuncs.build_time_df(path_F, domain)
 
@@ -64,6 +63,7 @@ def generate_frame(args):
             SWE_N = getvar(wrfin, "SNOWNC", timeidx=timeidx) # Conversion factor to inches
         with Dataset(file_path_F) as wrfin2:
             SWE_F = getvar(wrfin2, "SNOWNC", timeidx=timeidx) 
+            
         print("Read in WRF data")
         cart_proj = get_cartopy(SWE_N)
 

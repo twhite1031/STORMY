@@ -25,13 +25,13 @@ A GIF will be made using the plots between the time periods
 start_time, end_time  = datetime(2023,1,9,7,40,00), datetime(2023, 1, 9,7, 55, 00)
 domain = 2
 
-# Path to each WRF run (NORMAL & FLAT)
+# Path to each WRF run 
 path = f"/data2/white/wrf/WRFV4.5.2/run/"
-
-# Path to save GIF or Files
 savepath = f"/data2/white/WRF_OUTPUTS/SEMINAR/BOTH_ATTEMPT/"
 
 # --- END USER INPUT ---
+
+# Build/Find the time data for the model runs
 time_df = wrffuncs.build_time_df(path, domain)
 
 mask = (time_df["time"] >= start_time) & (time_df["time"] <= end_time)
@@ -56,10 +56,6 @@ def generate_frame(args):
             ua = getvar(ncfile, "ua", units="m s-1")
             va = getvar(ncfile, "va", units="m s-1")
             wspd = getvar(ncfile, "uvmet_wspd_wdir", units="m s-1")[0,:]
-        #print(f"q.shape: {q.shape}")   # Should be (levels, latitudes, longitudes)
-        #print(f"ua.shape: {ua.shape}") # Should be (levels, latitudes, longitudes)
-        #print(f"va.shape: {va.shape}") # Should be (levels, latitudes, longitudes)
-        #print(f"p.shape: {p.shape}")   # Should be (levels, latitudes, longitudes)
 
         #print("Read in WRF data")
         cart_proj = get_cartopy(p)
@@ -67,8 +63,6 @@ def generate_frame(args):
     # Create a figure
         fig = plt.figure(figsize=(30,15),facecolor='white')
         ax_N = plt.axes(projection=cart_proj)
-
-        #print("Created Figures")
 
     # Get the latitude and longitude points
         lats, lons = latlon_coords(p)
@@ -80,6 +74,7 @@ def generate_frame(args):
         ax_N.coastlines('50m', linewidth=1)
         ax_N.add_feature(USCOUNTIES, alpha=0.1)
         #print("Made land features")
+
     # Set the map bounds
         ax_N.set_xlim(cartopy_xlim(p))
         ax_N.set_ylim(cartopy_ylim(p))

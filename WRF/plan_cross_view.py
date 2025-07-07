@@ -12,16 +12,16 @@ from datetime import datetime
 import wrffuncs
 import string
 import pandas as pd
+
 """
 A side by side plot with composite reflectivity ('mdbz') on the left with a cross section line
 On the right, a cross section of reflectivity, water vapor mixing ratio, and vertical velocity vectors
 """
 # --- USER INPUT ---
-
 wrf_date_time = datetime(2022,11,18,1,00,00)
 domain = 2
-# Cross section start and end (lattitude, longitude)
-lat_lon = [(43.65, -76.75), (43.65,-75.5)]
+
+lat_lon = [(43.65, -76.75), (43.65,-75.5)] # Cross section start and end points
 
 SIMULATION = 1 # If comparing runs
 path = f"/data2/white/WRF_OUTPUTS/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
@@ -29,6 +29,7 @@ savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}
 
 # --- END USER INPUT ---
 
+# Build/Find the time data for the model runs
 time_df = wrffuncs.build_time_df(path, domain)
 obs_time = pd.to_datetime(wrf_date_time)
 

@@ -5,6 +5,7 @@ from scipy.ndimage import gaussian_filter
 file_path = "geo_em.d01.nc"
 ds = xr.open_dataset(file_path)
 HGT_attrs = ds.HGT_M.attrs # Extract the attributes for the variable
+
 # Define Tug Hill region boundaries (adjust if needed)
 lat_min, lat_max = 43.25, 44.25
 lon_min, lon_max = -76.25, -75.25
@@ -20,9 +21,6 @@ ds["HGT_M"] = ds["HGT_M"].where(~mask, flatten_height)
 # Extract the HGT_M variable
 hgt = ds["HGT_M"]
 
-# Select only the 2D portion of the height data (ignoring the time dimension)
-#hgt_2d = hgt.isel(Time=0)  # Select the first time step (size 1)
-
 # Define the smoothing function (using Gaussian filter for example)
 def smooth_terrain(data, sigma):
     """
@@ -32,16 +30,12 @@ def smooth_terrain(data, sigma):
     # Convert to numpy array for smoothing
     smoothed_data = gaussian_filter(data, sigma=sigma)
     return smoothed_data
+
 # Apply smoothing to the entire height data (ignoring the mask for now)
 smoothed_hgt = smooth_terrain(hgt.values, sigma=1.5)
 
-#mask_2d = mask.isel(Time=0)
-
 # Apply the smoothed data to the regions specified by the mask, leaving the rest unchanged
 smoothed_hgt_final = xr.where(mask.values, smoothed_hgt, hgt.values)
-
-# Add the time dimension back by reshaping smoothed_hgt into a 3D array
-#smoothed_hgt_with_time = smoothed_hgt[np.newaxis, :, :]  # Add a new axis for time
 
 # Now, assign it back to the HGT_M variable in the dataset
 ds["HGT_M"] = (["Time", "south_north", "west_east"], smoothed_hgt_final)

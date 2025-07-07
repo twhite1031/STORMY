@@ -11,26 +11,22 @@ import wrffuncs
 from datetime import datetime
 
 # --- USER INPUT ---
-
 wrf_date_time = datetime(1997,1,12,1,52,00)
 domain = 2
-height = 850
+
+windbarbs = False # Set to True if you want to plot wind barbs
 
 SIMULATION = 1 # If comparing runs
 path = f"/data2/white/WRF_OUTPUTS/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
 savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
 
-# Boolean to save figure and display wind barbs, gridlines
-savefig = True
-windbarbs = False
-gridlines = False
-
 # --- END USER INPUT ---
 
+# Build/Find the time data for the model runs
 time_df = wrffuncs.build_time_df(path, domain)
 obs_time = pd.to_datetime(wrf_date_time)
 
-# Compute absolute time difference
+# Compute absolute time difference between model times and input time
 closest_idx = (time_df["time"] - obs_time).abs().argmin()
 
 # Extract the matched row
@@ -47,8 +43,9 @@ with Dataset(matched_file) as ds:
 
     #Get the CAPE values (And more, CAPE is at [0], CIN at [1], LCL at [2], and LFC at[3])
     cape = getvar(ds, "cape_2d", timeidx=matched_timeidx)
+
 '''
-# Open storm report file
+# Uncomment if you have a storm report file to plot tornado locations
 path = "/data1/white/Downloads/MET416/Storm_reports/"
 df = pd.read_csv(path + "180515_rpts_torn.csv", index_col=False,sep=",", header=0,
                  names=["Time", "F_Scale", "Location","County","State","Lat","Lon"])
@@ -115,6 +112,7 @@ plt.title(f"CAPE (j/kg) at ",{"fontsize" : 14})
 
 # Format it for a filename (no spaces/colons)
 time_str = matched_time.strftime("%Y-%m-%d_%H-%M-%S")
+
 # Use in filename
 filename = f"CAPE_{time_str}.png"
 

@@ -24,10 +24,11 @@ savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}
 
 # --- END USER INPUT ---
 
+# Build/Find the time data for the model runs
 time_df = wrffuncs.build_time_df(path, domain)
 obs_time = pd.to_datetime(wrf_date_time)
 
-# Compute absolute time difference
+# Compute absolute time difference between model times and input time
 closest_idx = (time_df["time"] - obs_time).abs().argmin()
 
 # Extract the matched row
@@ -39,6 +40,7 @@ matched_timeidx = match["timeidx"]
 matched_time = match["time"]
 
 print(f"Closest match: {matched_time} in file {matched_file} at time index {matched_timeidx}")
+
 
 with Dataset(matched_file) as ds:
     plot_var = getvar(ds, var, timeidx=matched_timeidx)

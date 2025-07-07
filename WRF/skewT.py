@@ -8,13 +8,13 @@ from metpy.units import units
 import wrffuncs
 from datetime import datetime
 import pandas as pd
+
 """
 A standard script to make a skewT given a lat/lon point which finds 
 the nearest gridbox to that point
 """
 
 # --- USER INPUT ---
-
 wrf_date_time = datetime(1997,1,12,1,52,00)
 domain = 2
 lat_lon = [43.598, -75.918]
@@ -24,6 +24,8 @@ path = f"/data2/white/WRF_OUTPUTS/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
 savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
 
 # --- END USER INPUT ---
+
+# Build/Find the time data for the model runs
 time_df = wrffuncs.build_time_df(path, domain)
 obs_time = pd.to_datetime(wrf_date_time)
 
@@ -63,14 +65,13 @@ lat1 = wrf.getvar(Dataset(matched_file),"lat",timeidx=matched_timeidx)
 lon1 = wrf.getvar(Dataset(matched_file),"lon",timeidx=matched_timeidx)
 lat = lat1[x_y[1],x_y[0]] * units.degree_north
 lon = lon1[x_y[1],x_y[0]] * units.degree_east
-print(lat)
-print(lon) 
+
+print(f"Viewing the lattitude and longitude point of {lat}, {lon}")
 
 # Example of defining your own vertical barb spacing
 skew = SkewT()
 
-# Plot the data using normal plotting functions, in this case using
-# log scaling in Y, as dictated by the typical meteorological plot
+# Plot the data using normal plotting functions provided by MetPy
 skew.plot(p, T, 'r')
 skew.plot(p, Td, 'g')
 
@@ -94,12 +95,12 @@ skew.ax.set_ylabel('Pressure (hPa)')
 
 # Format it for a filename (no spaces/colons)
 time_str = matched_time.strftime("%Y-%m-%d_%H-%M-%S")
+
 # Use in filename
 filename = f"skewT_{time_str}.png"
 
 plt.title(f"SkewT at {time_str}")
 
 plt.savefig(savepath+filename)
-
 plt.show()
 

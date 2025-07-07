@@ -12,20 +12,28 @@ import cartopy.feature as cfeature
 import wrffuncs
 from datetime import datetime
 import pandas as pd
+
 """
-A script used to automatically identify Lake-effect band locations based on connected reflectivity
-values based on a threshold, still in development.
+A script used to automatically identify Lake-effect band locations based on connected cloud fractions at a certain level, 
+then classifying the region as a cloud band for analysis
 """
 
 # --- USER INPUT ---
 
 wrf_date_time = datetime(2022,11,18,13,50,00)
 domain = 2
+<<<<<<< HEAD
 # Threshold to identify the snow band (e.g., cloud fraction > .1)
 threshold = .95
 
 lat_lon = [43.86935, -76.164764]  # Coordinates to start cloud check
 ht_level = 15
+=======
+
+threshold = .95 # Threshold to identify the snow band (e.g., cloud fraction > .1)
+lat_lon = [43.86935, -76.164764]  # Coordinates to start cloud check
+ht_level = 15 # Height level to start cloud check, 0 is surface, 1 is first level above surface, etc.
+>>>>>>> c34d0d1 (Cleaning Comments/Formats)
 
 SIMULATION = 1 # If comparing runs
 path = f"/data2/white/WRF_OUTPUTS/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
@@ -33,10 +41,11 @@ savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}
 
 # --- END USER INPUT ---
 
+# Build/Find the time data for the model runs
 time_df = wrffuncs.build_time_df(path, domain)
 obs_time = pd.to_datetime(wrf_date_time)
 
-# Compute absolute time difference
+# Compute absolute time difference between model times and input time
 closest_idx = (time_df["time"] - obs_time).abs().argmin()
 
 # Extract the matched row
@@ -48,7 +57,6 @@ matched_timeidx = match["timeidx"]
 matched_time = match["time"]
 
 print(f"Closest match: {matched_time} in file {matched_file} at time index {matched_timeidx}")
-
 
 # Get the WRF variables
 with Dataset(matched_file) as ds:
@@ -95,7 +103,13 @@ else:
 
 cloud_heights = np.where(cloud_region_mask, ht, np.nan)
 mean_height = np.nanmean(cloud_heights)
+<<<<<<< HEAD
 print(f"Mean cloud height at level {ht_level}: {mean_height:.1f} m")
+=======
+
+print(f"Mean cloud height at level {ht_level}: {mean_height:.1f} m")
+
+>>>>>>> c34d0d1 (Cleaning Comments/Formats)
 z_inds, lat_inds, lon_inds = np.where(cloud_region_mask)
 
 # Isolate Mixing Ratio to Cloud Bands
@@ -115,6 +129,7 @@ print(f"Ice Avg: {ice_avg:.6f}")
 
 wv_avg = np.nanmean(wv_cloud)
 print(f"Water Vapor Avg: {wv_avg:.6f}")
+<<<<<<< HEAD
 
 
 if len(lat_inds) == 0 or len(lon_inds) == 0:
@@ -123,10 +138,16 @@ else:
     print(f"Cloud region has {len(lat_inds)} grid points")
 min_y, max_y = lat_inds.min(), lat_inds.max()
 min_x, max_x = lon_inds.min(), lon_inds.max()
+=======
+>>>>>>> c34d0d1 (Cleaning Comments/Formats)
 
 
+if len(lat_inds) == 0 or len(lon_inds) == 0:
+    print("No grid boxes in the cloud region.")
+else:
+    print(f"Cloud region has {len(lat_inds)} grid points")
 
-# Get the lat/lon points
+# Get the lat/lon points 
 lats, lons = latlon_coords(dbz)
 
 # Get the cartopy projection object
@@ -155,9 +176,12 @@ ax.add_feature(ocean,zorder=0)
 ax.add_feature(lakes,zorder=0)
 ax.add_feature(states, edgecolor='gray',zorder=2)
 
+<<<<<<< HEAD
 # Your main field (e.g., reflectivity)
 #cf = ax.contour(lons, lats, max_dbz, transform=crs.PlateCarree(),cmap="viridis",vmin=10,vmax=40,zorder=1)  # assuming 2D lat/lon
 
+=======
+>>>>>>> c34d0d1 (Cleaning Comments/Formats)
 # Collapse the 3D Mask into 2D for plotting. Basically saying that if any level is true, show it as a cloud (Filled) on plot
 cloud_mask_2d = np.max(cloud_region_mask, axis=0)
 cf = ax.contourf(
@@ -166,23 +190,33 @@ cf = ax.contourf(
     colors=['red'], alpha=0.3,      # Set fill color and transparency
     transform=crs.PlateCarree(), zorder=4
 )
+<<<<<<< HEAD
+=======
+
+>>>>>>> c34d0d1 (Cleaning Comments/Formats)
 plt.colorbar(cf, ax=ax, orientation="vertical", label="Max Ref")
 
 # Set the map bounds
 ax.set_xlim(cartopy_xlim(dbz))
 ax.set_ylim(cartopy_ylim(dbz))
+<<<<<<< HEAD
 
+=======
+>>>>>>> c34d0d1 (Cleaning Comments/Formats)
 
 plt.title("Cloud region linked to flash")
 plt.xlabel("Longitude")
 plt.ylabel("Latitude")
+
 # Format it for a filename (no spaces/colons)
 time_str = matched_time.strftime("%Y-%m-%d_%H-%M-%S")
+
 # Use in filename
 filename = f"identifycloudband_{time_str}.png"
 
 plt.savefig(savepath + filename)
 plt.show()
+
 
 
 

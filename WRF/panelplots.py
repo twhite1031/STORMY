@@ -10,12 +10,12 @@ from wrf import (getvar, interpline, to_np, vertcross, smooth2d, CoordPair, get_
 from datetime import datetime
 import wrffuncs
 import pandas as pd
+
 """
 A three panel plot that shows a plan view of cloud top temperature with a cross section line.
 Two side plots show cross sectional wind speed and reflectivity
 """
 # --- USER INPUT ---
-
 wrf_date_time = datetime(1997,1,12,1,52,00)
 domain = 2
 lat_lon = [(44.00, -76.75), (44.00,-75.5)]
@@ -23,8 +23,10 @@ lat_lon = [(44.00, -76.75), (44.00,-75.5)]
 SIMULATION = 1 # If comparing runs
 path = f"/data2/white/WRF_OUTPUTS/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
 savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
+
 # --- END USER INPUT ---
 
+# Build/Find the time data for the model runs
 time_df = wrffuncs.build_time_df(path, domain)
 obs_time = pd.to_datetime(wrf_date_time)
 

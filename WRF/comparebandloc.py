@@ -19,9 +19,6 @@ A plot used to outline max reflectivity values of 20 dBZ (can be changed) as a b
 for the lake-effect band. Longitude plotted to observe band location.
 """
 
-# MAY NEED TO USE IN SHELL
-#export PROJ_NETWORK=OFF
-
 # --- USER INPUT ---
 start_time, end_time  = datetime(1997,1,10,00,2,00), datetime(1997, 1, 10,00, 18, 00)
 domain = 2
@@ -35,10 +32,11 @@ savepath = f"/data2/white/WRF_OUTPUTS/SEMINAR/BOTH_ATTEMPT/"
 
 # --- END USER INPUT ---
 
+# Build/Find the time data for the model runs
 time_df_N = wrffuncs.build_time_df(path_N, domain)
 time_df_F = wrffuncs.build_time_df(path_F, domain)
 
-# Filter time range
+# Filter time range based on start_time and end_time
 mask_N = (time_df_N["time"] >= start_time) & (time_df_N["time"] <= end_time)
 mask_F = (time_df_F["time"] >= start_time) & (time_df_F["time"] <= end_time)
 

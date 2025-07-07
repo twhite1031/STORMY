@@ -11,31 +11,29 @@ import cartopy.feature as cfeature
 import wrffuncs
 from datetime import datetime
 import pandas as pd
+
 """
 A script used to automatically identify Lake-effect band locations based on connected reflectivity
-values based on a threshold, still in development.
+values based on a threshold, still in development and not fully functional
 """
 
 # --- USER INPUT ---
-
 wrf_date_time = datetime(2022,11,17,23,40,00)
 domain = 2
-# Threshold to identify the snow band (e.g., reflectivity > 20 dBZ)
-threshold = 0
+
+threshold = 0 # Threshold to identify the snow band (e.g., reflectivity > 20 dBZ)
 
 SIMULATION = 1 # If comparing runs
-# Path to each WRF run (NORMAL & FLAT)
 path = r"C:\Users\thoma\Documents\WRF_OUTPUTS"
-
-# Path to save GIF or Files
 savepath = r"C:\Users\thoma\Documents\WRF_OUTPUTS"
 
 # --- END USER INPUT ---
 
+# Build/Find the time data for the model runs
 time_df = wrffuncs.build_time_df(path, domain)
 obs_time = pd.to_datetime(wrf_date_time)
 
-# Compute absolute time difference
+# Compute absolute time difference between model times and input time
 closest_idx = (time_df["time"] - obs_time).abs().argmin()
 
 # Extract the matched row
@@ -47,7 +45,6 @@ matched_timeidx = match["timeidx"]
 matched_time = match["time"]
 
 print(f"Closest match: {matched_time} in file {matched_file} at time index {matched_timeidx}")
-
 
 # Get the WRF variables
 with Dataset(matched_file) as ds:

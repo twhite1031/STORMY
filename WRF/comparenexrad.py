@@ -12,13 +12,11 @@ from datetime import datetime
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 import wrffuncs
 import string
+
 """
 A side by side comparison of two WRF runs using plots of simulated reflectivity ('mdbz)
 A GIF will be made using the plots between the time periods
 """
-
-# MAY NEED TO USE IN SHELL
-#export PROJ_NETWORK=OFF
 
 # --- USER INPUT ---
 start_time, end_time  = datetime(1997,1,10,00,2,00), datetime(1997, 1, 10,00, 18, 00)
@@ -33,6 +31,7 @@ savepath = f"/data2/white/WRF_OUTPUTS/SEMINAR/BOTH_ATTEMPT/"
 
 # --- END USER INPUT ---
 
+# Build/Find the time data for the model runs
 time_df_N = wrffuncs.build_time_df(path_N, domain)
 time_df_F = wrffuncs.build_time_df(path_F, domain)
 

@@ -7,8 +7,6 @@ import pyart
 import numpy.ma as ma
 import wrffuncs
 
-# MAY NEED TO USE IN SHELL
-#export PROJ_NETWORK=OFF
 
 # --- USER INPUT ---
 start_time, end_time  = datetime(1997,1,10,00,2,00), datetime(1997, 1, 10,00, 18, 00)

@@ -8,12 +8,12 @@ from wrf import (to_np, getvar, smooth2d, get_cartopy, cartopy_xlim,cartopy_ylim
 from datetime import datetime
 import wrffuncs
 import pandas as pd
+
 """
 Plot of the Sea Level Pressure (SLP)
 """
 
 # --- USER INPUT ---
-
 wrf_date_time = datetime(1997,1,12,1,52,00)
 domain = 2
 
@@ -23,6 +23,7 @@ savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}
 
 # --- END USER INPUT ---
 
+# Build/Find the time data for the model runs
 time_df = wrffuncs.build_time_df(path, domain)
 obs_time = pd.to_datetime(wrf_date_time)
 
@@ -38,7 +39,6 @@ matched_timeidx = match["timeidx"]
 matched_time = match["time"]
 
 print(f"Closest match: {matched_time} in file {matched_file} at time index {matched_timeidx}")
-
 
 with Dataset(matched_file) as ds:
     # Get the sea level pressure
