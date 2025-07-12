@@ -19,21 +19,14 @@ then classifying the region as a cloud band for analysis
 """
 
 # --- USER INPUT ---
-
 wrf_date_time = datetime(2022,11,18,13,50,00)
 domain = 2
-<<<<<<< HEAD
+
 # Threshold to identify the snow band (e.g., cloud fraction > .1)
-threshold = .95
+threshold = 1
 
 lat_lon = [43.86935, -76.164764]  # Coordinates to start cloud check
-ht_level = 15
-=======
-
-threshold = .95 # Threshold to identify the snow band (e.g., cloud fraction > .1)
-lat_lon = [43.86935, -76.164764]  # Coordinates to start cloud check
-ht_level = 15 # Height level to start cloud check, 0 is surface, 1 is first level above surface, etc.
->>>>>>> c34d0d1 (Cleaning Comments/Formats)
+ht_level = 20
 
 SIMULATION = 1 # If comparing runs
 path = f"/data2/white/WRF_OUTPUTS/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
@@ -58,6 +51,8 @@ matched_time = match["time"]
 
 print(f"Closest match: {matched_time} in file {matched_file} at time index {matched_timeidx}")
 
+timestamp_str = matched_time.strftime("%Y%m%d_%H%M%S")
+
 # Get the WRF variables
 with Dataset(matched_file) as ds:
     # Convert desired coorindates to WRF gridbox coordinates
@@ -80,7 +75,7 @@ lats = to_np(lats)
 lons = to_np(lons)
 
 # Step 1: Define the 2D mask at level 15
-base_level = 15
+base_level = ht_level
 snow_band_2d = cloud_frac[base_level, :, :] >= threshold
 
 # Step 2: Label connected horizontal regions
@@ -96,20 +91,21 @@ else:
     # Step 4: Get the 2D footprint of the connected region
     region_mask_2d = (labeled_2d == start_label)
 
+    # Ensure you're indexing with .isel if ht is an xarray DataArray
+    ht_base = ht.isel(bottom_top=base_level)  # shape: (south_north, west_east)
+
+    # Use the 2D mask directly on this xarray slice
+    mean_height = ht_base.where(region_mask_2d).mean().item()  # Convert to float
+    print(f"Mean cloud height at level {ht_level}: {mean_height:.1f} m with threshold {threshold}")
+
     # Step 5: Extend vertically, only in columns that are part of the base region
     cloud_region_mask = np.zeros_like(cloud_frac, dtype=bool)
+    
     for z in range(cloud_frac.shape[0]):
         cloud_region_mask[z, :, :] = region_mask_2d & (cloud_frac[z, :, :] >= threshold)
 
 cloud_heights = np.where(cloud_region_mask, ht, np.nan)
-mean_height = np.nanmean(cloud_heights)
-<<<<<<< HEAD
-print(f"Mean cloud height at level {ht_level}: {mean_height:.1f} m")
-=======
 
-print(f"Mean cloud height at level {ht_level}: {mean_height:.1f} m")
-
->>>>>>> c34d0d1 (Cleaning Comments/Formats)
 z_inds, lat_inds, lon_inds = np.where(cloud_region_mask)
 
 # Isolate Mixing Ratio to Cloud Bands
@@ -118,34 +114,48 @@ snow_cloud = snow[cloud_region_mask]
 ice_cloud = ice[cloud_region_mask]
 graupel_cloud = graupel[cloud_region_mask]
 
-snow_avg = np.nanmean(snow_cloud)
-print(f"Snow Avg: {snow_avg:.6f}")
+# Dictionary of 3D cloud-filtered mixing ratio fields
+cloud_vars = {
+    "Water Vapor": wv_cloud,
+    "Snow": snow_cloud,
+    "Ice": ice_cloud,
+    "Graupel": graupel_cloud
+}
 
-graupel_avg = np.nanmean(graupel_cloud)
-print(f"Graupel Avg: {graupel_avg:.6f}")
+for name, data in cloud_vars.items():
+        
+    flat_data = data.compressed()
+    
+    # Compute statistics
+    mean_val = np.mean(flat_data)
+    median_val = np.median(flat_data)
+    std_val = np.std(flat_data)
 
-ice_avg = np.nanmean(ice_cloud)
-print(f"Ice Avg: {ice_avg:.6f}")
+    # Print statistics
+    print(f"\n{name} Mixing Ratio (g/kg):")
+    print(f"  Mean:   {mean_val:.3f}")
+    print(f"  Median: {median_val:.3f}")
+    print(f"  Std:    {std_val:.3f}")
 
-wv_avg = np.nanmean(wv_cloud)
-print(f"Water Vapor Avg: {wv_avg:.6f}")
-<<<<<<< HEAD
+    # Plot histogram
+    plt.figure(figsize=(8,10))
+    plt.hist(flat_data, bins=50, edgecolor='black')
+    plt.title(f"{name} Mixing Ratio Histogram (g/kg)")
+    plt.xlabel("Mixing Ratio (g/kg)")
+    plt.ylabel("Frequency")
+    plt.grid(True)
+    plt.suptitle(f"Mean height {mean_height} index {ht_level} | {len(lat_inds)} gridboxes | Threshold {threshold} | Attempt {SIMULATION}\nStarting Check at {lat_lon[0]} {lat_lon[1]} ")
+    plt.savefig(savepath + f"hist{name[0:3]}_ht{ht_level}T{threshold}_A{SIMULATION}D{domain}_{timestamp_str}.png")
+    #plt.show()
 
 
 if len(lat_inds) == 0 or len(lon_inds) == 0:
     print("No grid boxes in the cloud region.")
 else:
     print(f"Cloud region has {len(lat_inds)} grid points")
+
 min_y, max_y = lat_inds.min(), lat_inds.max()
 min_x, max_x = lon_inds.min(), lon_inds.max()
-=======
->>>>>>> c34d0d1 (Cleaning Comments/Formats)
-
-
-if len(lat_inds) == 0 or len(lon_inds) == 0:
-    print("No grid boxes in the cloud region.")
-else:
-    print(f"Cloud region has {len(lat_inds)} grid points")
 
 # Get the lat/lon points 
 lats, lons = latlon_coords(dbz)
@@ -176,12 +186,6 @@ ax.add_feature(ocean,zorder=0)
 ax.add_feature(lakes,zorder=0)
 ax.add_feature(states, edgecolor='gray',zorder=2)
 
-<<<<<<< HEAD
-# Your main field (e.g., reflectivity)
-#cf = ax.contour(lons, lats, max_dbz, transform=crs.PlateCarree(),cmap="viridis",vmin=10,vmax=40,zorder=1)  # assuming 2D lat/lon
-
-=======
->>>>>>> c34d0d1 (Cleaning Comments/Formats)
 # Collapse the 3D Mask into 2D for plotting. Basically saying that if any level is true, show it as a cloud (Filled) on plot
 cloud_mask_2d = np.max(cloud_region_mask, axis=0)
 cf = ax.contourf(
@@ -190,32 +194,24 @@ cf = ax.contourf(
     colors=['red'], alpha=0.3,      # Set fill color and transparency
     transform=crs.PlateCarree(), zorder=4
 )
-<<<<<<< HEAD
-=======
 
->>>>>>> c34d0d1 (Cleaning Comments/Formats)
 plt.colorbar(cf, ax=ax, orientation="vertical", label="Max Ref")
 
 # Set the map bounds
 ax.set_xlim(cartopy_xlim(dbz))
 ax.set_ylim(cartopy_ylim(dbz))
-<<<<<<< HEAD
-
-=======
->>>>>>> c34d0d1 (Cleaning Comments/Formats)
 
 plt.title("Cloud region linked to flash")
 plt.xlabel("Longitude")
 plt.ylabel("Latitude")
 
-# Format it for a filename (no spaces/colons)
-time_str = matched_time.strftime("%Y-%m-%d_%H-%M-%S")
-
 # Use in filename
-filename = f"identifycloudband_{time_str}.png"
+filename = f"identifycloudband_ht{ht_level}T{threshold}_A{SIMULATION}D{domain}_{timestamp_str}.png"
 
+plt.suptitle(f"Mean height {mean_height} index {ht_level} | {len(lat_inds)} gridboxes | Threshold {threshold} | Attempt {SIMULATION}\nStarting Check at {lat_lon[0]} {lat_lon[1]} ")
 plt.savefig(savepath + filename)
-plt.show()
+
+#plt.show()
 
 
 

@@ -6,6 +6,7 @@ from matplotlib.colors import from_levels_and_colors
 import pandas as pd
 from netCDF4 import Dataset
 from wrf import extract_times
+import requests
 
 # Adjust datetime to match filenames
 def round_to_nearest_5_minutes(dt):
@@ -164,42 +165,6 @@ def get_timeidx_and_wrf_file(date_time, file_interval_sec, numtimeidx, domain=1,
 
     return timeidx, pattern
 
-'''
-def get_timeidx_and_wrf_file(date_time,  file_interval, numtimeidx, domain=1, wrf_start_hour=0):
-
-    """
-    Determines the correct WRF file and time index based on the given datetime.
-
-    Parameters:
-    - date_time (datetime): The datetime to plot.
-    - domain (int): The WRF domain  (default is 1; e.g., 1 or 2).
-    - file_interval (int): The time interval (in minutes) between each WRF file.
-    - numtimeidx (int): Number of time indices per WRF file.
-    - wrf_start_hour (int): Hour of the first WRF file in a day (default is 0 for midnight).
-
-    Returns:
-    - timeidx (int): The time index within the selected WRF file.
-    - pattern (str): The corresponding WRF file name.
-    """
-    # Define the first WRF file time of the current day
-    wrf_start_time = date_time.replace(hour=wrf_start_hour, minute=0, second=0, microsecond=0)
-
-    # Compute the nearest WRF file start time before or at the given date_time
-    elapsed_minutes = (date_time - wrf_start_time).total_seconds() / 60
-    wrf_offset = (elapsed_minutes // file_interval) * file_interval
-    wrf_filename_time = wrf_start_time + timedelta(minutes=wrf_offset)
-
-    # Compute time index within the selected WRF file
-    time_offset = (date_time - wrf_filename_time).total_seconds() / 60
-    time_step = file_interval // numtimeidx
-    timeidx = int(time_offset // time_step)
-
-    # Construct WRF file name pattern
-    pattern = f"wrfout_d0{domain}_{wrf_filename_time.year:04d}-{wrf_filename_time.month:02d}-{wrf_filename_time.day:02d}_{wrf_filename_time.hour:02d}:{wrf_filename_time.minute:02d}:00"
-
-    return timeidx, pattern
-'''
-
 def get_timeidx(wrf_date_time, file_interval, numtimeidx):
     timeidx = int((wrf_date_time.minute % file_interval) // (file_interval // numtimeidx))
     return timeidx
@@ -237,5 +202,67 @@ def build_time_df(path, domain):
     df.to_pickle(time_cache)
     return df
 
+def parse_wrfout_time(filename):
+    """
+    Parses WRF output filenames with either:
+    - colons:    wrfout_d01_2022-11-17_13:00:00
+    - underscores: wrfout_d01_2022-11-17_13_00_00
 
+    Returns:
+    - file_time: safe for filenames (e.g., 20221117_1300)
+    - title_time: human-readable string (e.g., 2022-11-17 13:00 UTC)
+    """
+    try:
+        # Extract timestamp string after domain
+        datetime_str = filename.split('_d0')[1].split('_', 1)[1]
+    except IndexError:
+        raise ValueError("Expected format: wrfout_d0X_YYYY-MM-DD_HH:MM:SS or _HH_MM_SS")
+
+    # Try all supported time formats
+    for fmt in ("%Y-%m-%d_%H:%M:%S", "%Y-%m-%d_%H_%M_%S"):
+        try:
+            dt = datetime.strptime(datetime_str, fmt)
+            break
+        except ValueError:
+            continue
+    else:
+        raise ValueError(f"Unrecognized datetime format in filename: {datetime_str}")
+
+    # Windows-safe and readable
+    file_time = dt.strftime("%Y%m%d_%H%M")
+    title_time = dt.strftime("%Y-%m-%d %H:%M UTC")
+    
+    return file_time, title_time
+
+# tbuffer in seconds
+def get_LMA_flash_data(start,tbuffer):
+    filenames = []
+    filename = '/data2/white/DATA/PROJ_LEE/LMADATA/LYLOUT_{}000_0600.dat.flash.h5'.format(start.strftime('%y%m%d_%H%M')[:-1])
+    filenames.append(filename)
+    if (glob.glob(filename) == []): # Check if file exists 
+        url = 'https://data.nssl.noaa.gov/thredds/fileServer/WRDD/OKLMA/deployments/flashsort_6/h5_files/{}/{}'.format(start.strftime('%Y/%m/%d'),os.path.basename(filename))
+        response = requests.get(url)
+        with open(filename, "wb") as file:
+            file.write(response.content)
+        print(f'{filename} downloaded successfully.')
+    if (tbuffer > 600):
+        for i in range(int(tbuffer/600)):
+            filename = '/data2/white/DATA/PROJ_LEE/LMADATA/LYLOUT_{}000_0600.dat.flash.h5'.format((start+timedelta(seconds=(i*600))).strftime('%y%m%d_%H%M')[:-1])
+            filenames.append(filename)
+            if (glob.glob(filename) == []): # Check if file exists
+                url = 'https://data.nssl.noaa.gov/thredds/fileServer/WRDD/OKLMA/deployments/flashsort_6/h5_files/{}/{}'.format((start+timedelta(seconds=(i*600))).strftime('%Y/%m/%d'),os.path.basename(filename))
+                print(url)
+                response = requests.get(url)
+                with open(filename, "wb") as file:
+                    file.write(response.content)
+                print(f'{filename} downloaded successfully.')
+    filename = '/data2/white/DATA/PROJ_LEE/LMADATA/LYLOUT_{}000_0600.dat.flash.h5'.format((start+timedelta(seconds=tbuffer)).strftime('%y%m%d_%H%M')[:-1])
+    if filename not in filenames:
+        filenames.append(filename)
+        if (glob.glob(filename) == []):
+                url = 'https://data.nssl.noaa.gov/thredds/fileServer/WRDD/OKLMA/deployments/flashsort_6/h5_files/{}/{}'.format((start+timedelta(seconds=tbuffer)).strftime('%Y/%m/%d'),os.path.basename(filename))
+                response = requests.get(url)
+                with open(filename, "wb") as file:
+                    file.write(response.content)
+                print(f'{filename} downloaded successfully.')
 
