@@ -14,10 +14,10 @@ Plot of the simulated composite reflectivty ('mdbz') with/without wind barbs
 """
 
 # --- USER INPUT ---
-wrf_date_time = datetime(1997,1,12,1,52,00)
+wrf_date_time = datetime(2022,11,17,19,35,00)
 domain = 2
 
-windbarbs = True
+windbarbs = False
 
 SIMULATION = 1 # If comparing runs
 path = f"/data2/white/WRF_OUTPUTS/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"

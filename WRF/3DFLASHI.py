@@ -78,7 +78,7 @@ print("Flash lat and lon: ",to_np(flashloc))
 print("Height agl at 0 index: ", to_np(ht_agl[0,flashindex[1],flashindex[2]]))
 print("Height (z) at 0 index: ", to_np(ht[0,flashindex[1],flashindex[2]]))
 
-flashheight = ((phb[flashindex[0], flashindex[1],flashindex[2]] + phb[flashindex[0], flashindex[1],flashindex[2]]) /9.8) - ht[flashindex[0], flashindex[1],flashindex[2]]
+flashheight = ((ph[flashindex[0], flashindex[1],flashindex[2]] + phb[flashindex[0], flashindex[1],flashindex[2]]) /9.8) - ht[flashindex[0], flashindex[1],flashindex[2]]
 
 print("Flashheight (m): ", to_np(flashheight))
 
