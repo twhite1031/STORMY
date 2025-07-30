@@ -8,6 +8,7 @@ from netCDF4 import Dataset
 from wrf import (getvar, to_np, get_cartopy, latlon_coords, vertcross,
                  interpline, CoordPair, xy_to_ll,ll_to_xy,cartopy_xlim, cartopy_ylim)
 from scipy.ndimage import label,  generate_binary_structure
+from skimage.measure import regionprops
 import cartopy.feature as cfeature
 import wrffuncs
 from datetime import datetime
@@ -27,12 +28,18 @@ domain = 2
 
 INTERACTIVE = True  # Set to False for non-interactive (auto-run) mode
 SHOW_FIGS = True # Do not display completed figures
-USE_MAX_DBZ = False # Toggle this to switch between lat/lon and max dBZ
+USE_MAX_DBZ = True # Toggle this to switch between lat/lon and max dBZ
 
 # Threshold to identify the snow band (e.g., cloud fraction > .1)
 threshold = 1
 lat_lon = [43.86935, -76.164764]  # Coordinates to start cloud check
 ht_level = 15
+
+aspect_ratio_thresh = 2.5
+
+# Define thresholds for LLAP band size (in gridpoints)
+min_gridboxes = 100   # minimum connected gridboxes
+max_gridboxes = 1000 # maximum connected gridboxes
 
 SIMULATION = 1 # If comparing runs
 path = f"/data2/white/WRF_OUTPUTS/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
@@ -83,57 +90,100 @@ with Dataset(matched_file) as ds:
     cloud = getvar(ds, "QCLOUD", timeidx=matched_timeidx, meta=False) * 1000
     hail = getvar(ds,"QHAIL", timeidx=matched_timeidx, meta=False) * 1000
 
-
 # Define dict where masks will be stored
 mask_cases = {}
 
-def identify_connected_cloud(cloud_frac, ht, ht_agl, max_dbz, fed, threshold, ht_level, x_y):
+# Function to easily "scroll" through figures
+def show_fig_with_keypress(key='enter'):
+    fig = plt.gcf()
+    ax = plt.gca()
+    pressed = plt.waitforbuttonpress()
+    plt.close()
 
+def identify_connected_cloud(cloud_frac, ht, ht_agl, max_dbz, fed, threshold, ht_level, x_y):
     base_level = ht_level
     snow_band_2d = cloud_frac[base_level, :, :] >= threshold
     labeled_2d, num_features = label(snow_band_2d)
+    labels, counts = np.unique(labeled_2d, return_counts=True)
+    label_counts = dict(zip(labels, counts))
+    props = regionprops(labeled_2d)
+
     if USE_MAX_DBZ:
         # Isolate Lake Ontario (LEE) Region
         lat_min, lat_max = 43, 44
         lon_min, lon_max = -78.5, -75.5
-
         dbz_base = dbz.isel(bottom_top=base_level)
         lats, lons = latlon_coords(dbz_base)
+
         region_mask = (lats >= lat_min) & (lats <= lat_max) & \
                       (lons >= lon_min) & (lons <= lon_max)
+                    
 
-        masked_dbz = dbz_base.where(region_mask)
-        print("masked_dbz shape:", masked_dbz.shape)
-
-        # Flatten and sort dBZ values with their 2D indices
-        flat_dbz = masked_dbz.values.flatten()
-        sorted_indices = np.argsort(flat_dbz)[::-1]  # descending order
-
-        found_valid_start = False
-
+        dbz_2d = dbz_base.where(region_mask)
+        flat_dbz = dbz_2d.values.flatten()
+        sorted_indices = np.argsort(flat_dbz)[::-1]
+        
+        check_num = 0
         for idx in sorted_indices:
-            if np.isnan(flat_dbz[idx]):
-                continue  # skip NaNs
 
-            y_idx, x_idx = np.unravel_index(idx, masked_dbz.shape)
+            # Make sure our starting points are higher than 30 dBZ
+            if flat_dbz[idx] < 25:
+                print("!!! Starting location is not higher than 25 dBZ, skipping to next time !!!")
+                return "NO_CLOUD"
+            
+            if check_num == 3:
+                print("!!! Too many starting point checks, skipping to next time !!!")
+                return "NO_CLOUD"
+                
+            if np.isnan(flat_dbz[idx]):
+                continue
+
+            y_idx, x_idx = np.unravel_index(idx, dbz_2d.shape)
             start_label = labeled_2d[y_idx, x_idx]
 
-            if start_label != 0:
-                with Dataset(matched_file) as ds:
-                    dbz_x_y = xy_to_ll(ds, x_idx, y_idx) # Mark location of flash in Coordinates
+            if start_label == 0:
+                print("dBZ peak not inside any connected cloud region.")
+                check_num += 1
+                continue  # Not part of a cloud region at this level
 
-                print(f"Starting gridbox (from ranked dBZ): x={x_idx}, y={y_idx}, Coordinates {dbz_x_y.values}, dBZ={flat_dbz[idx]}")
-                found_valid_start = True
-                break  # valid start found
+            size = label_counts[start_label]
+            print(f"Connected cloud size: {size} gridpoints")
+            
+            if not (min_gridboxes <= size <= max_gridboxes):
+                print("Region size does not meet LLAP size criteria.")
+                check_num += 1
+                continue
+            
+            region = props[start_label - 1]  # regionprops is 0-indexed, but label starts at 1
 
-        if not found_valid_start:
-            print("No valid dBZ point found in a connected region.")
-            return "NO_CLOUD"
+            # Compute aspect ratio (major / minor axis lengths)
+            if region.minor_axis_length == 0:
+                aspect_ratio = np.inf  # or skip
+            else:
+                aspect_ratio = region.major_axis_length / region.minor_axis_length
 
+            print(f"Aspect ratio: {aspect_ratio:.2f}")
+
+            '''
+            # Filter for LLAP-style elongation, USUALLY OFF
+            if aspect_ratio < aspect_ratio_thresh:
+                print("Region not elongated enough for LLAP criteria.")
+                check_num += 1
+                continue
+            '''
+
+            # Optional: get coordinates
+            with Dataset(matched_file) as ds:
+                dbz_x_y = xy_to_ll(ds, x_idx, y_idx)
+
+            print(f"LLAP or LES candidate at x={x_idx}, y={y_idx}, dBZ={flat_dbz[idx]}, size={size}, lat/lon={dbz_x_y.values}")
+            break  # or keep collecting if you want all matches
+    
     else:
-        # Manual input
-        dbz_x_y = lat_lon
+        # Manual input to start search
         start_label = labeled_2d[x_y[1], x_y[0]]
+        dbz_x_y = lat_lon
+
     cloud_region_mask = np.zeros_like(cloud_frac, dtype=bool)
 
     if start_label == 0:
@@ -207,12 +257,12 @@ ht_agl = to_np(ht_agl)
 
 # Define all mixing ratio variables
 mixing_ratios = {
-    "Snow": snow,
-    "Graupel": graupel,
-    "Ice": ice,
-    "Water Vapor": wv,
-    "Cloud":cloud,
-    "Hail":hail
+    "SNOW": snow,
+    "GRAUPEL": graupel,
+    "ICE": ice,
+    "WATER VAPOR": wv,
+    "CLOUD":cloud,
+    "HAIL":hail
 }
 
 def prompt_plot(prompt_text, plot_func):
@@ -242,7 +292,7 @@ def prompt_plot(prompt_text, plot_func):
         else:  
             print("Exiting script.")
             sys.exit()
-
+'''
 # === Stats for Cloud ===
 for case_name, mask in mask_cases.items():
     print(f"\n===== STATS FOR {case_name.upper()} =====")
@@ -429,6 +479,67 @@ def plot_3d_voxel():
     plt.show() if SHOW_FIGS else plt.close()
 
 prompt_plot(f"Plot 3D voxels of the cloud?", plot_3d_voxel)
+'''
+# === 3D Voxel Plot for Mixing Ratios
+# Colors to cycle through for each field (distinct from cloud color)
+field_colors = {
+    "GRAUPEL": "orange",
+    "SNOW": "purple",
+    "ICE": "green",
+    "HAIL": "red",
+    "WATER VAPOR": "yellow"
+}
+    
+
+def plot_3d_voxel_mixingratio(name, var):
+    fig = plt.figure(figsize=(10, 8))
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Print original shape (z, y, x)
+    z_dim, y_dim, x_dim = mask_cases["cloud"].shape
+    print("Original cloud mask shape (z, y, x):", z_dim, y_dim, x_dim)
+
+    # Transpose to match (x, y, z) voxel format
+    cloud_mask_vox = np.transpose(mask_cases["cloud"], (2, 1, 0)) # Downsample here if needed (e.g., [::2, ::2, ::2])
+
+    print("Voxel shape (x, y, z):", cloud_mask_vox.shape)
+
+    # *** New Mixing Ratio Check ***
+    cloud_mask_vox = np.transpose(mask_cases["cloud"], (2, 1, 0))
+    cloud_mask = mask_cases["cloud"]
+    
+    # Now take the mean only inside the cloud
+    mean_val = var[cloud_mask].mean() if np.any(cloud_mask) else 0.0 
+    # Create 3D mask of where mixing ratio is above mean, inside the cloud
+    variable_mask = np.transpose((cloud_mask) & (var > mean_val), (2, 1, 0))
+    
+    # Plot voxels
+    ax.voxels(variable_mask, facecolors=field_colors.get(name, "black"),alpha=0.6,label="Cloud")
+    ax.voxels(cloud_mask_vox, facecolors='lightblue', edgecolor=None, alpha=0.4,label=f"{name} > {var.mean()} g/kg")
+    
+    # Axes and appearance
+    ax.view_init(elev=10, azim=-90)
+
+    
+    x_min, x_max = lon_inds.min(), lon_inds.max()
+    y_min, y_max = lat_inds.min(), lat_inds.max()
+    z_min, z_max = z_inds.min(), z_inds.max()
+    
+    ax.set_xlim(x_min - 5, (x_max + 5))
+    ax.set_ylim(y_min - 5, (y_max + 5))
+    ax.set_zlim(0, (z_max + 3))
+    
+    ax.set_xlabel("X (grid)")
+    ax.set_ylabel("Y (grid)")
+    ax.set_zlabel("Z (grid)")
+    ax.set_title(f"3D Cloud with above average {name} mixing ratios highlighted at {matched_time}")
+
+    plt.savefig(savepath + f"3Dcloudvox{name}_ht{ht_level}T{threshold}_A{SIMULATION}D{domain}_{timestamp_str}.png")
+    plt.show() if SHOW_FIGS else plt.close()
+
+for name, data in mixing_ratios.items():
+    prompt_plot(f"Plot 3D Voxels highlightning above average {name}?", lambda: plot_3d_voxel_mixingratio(name, data))
+
 
 # === Plan View Map of Cloud and flash regions
 

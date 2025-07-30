@@ -16,16 +16,16 @@ import wrffuncs
 A foundation for using a multi processor loop to speed up processing data
 Be weary of how many you use based on the task and how many may be available (type 'top' in terminal, 'q' to quit)
 """
-
 # --- USER INPUT ---
-start_time, end_time  = datetime(1997,1,10,00,2,00), datetime(1997, 1, 10,00, 18, 00)
+start_time, end_time = datetime(2022,11,18,13,40,00), datetime(2022,11,18,14,00)
 domain = 2
 
-SIMULATION = "NORMAL"
-path = f"/data2/white/WRF_OUTPUTS/SEMINAR/{SIMULATION}_ATTEMPT/"
-savepath = f"/data2/white/WRF_OUTPUTS/SEMINAR/{SIMULATION}_ATTEMPT/"
+SIMULATION = 1 # If comparing runs
+path = f"/data2/white/WRF_OUTPUTS/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
+savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
 
 # --- END USER INPUT ---
+
 
 # Build/Find the time data for the model runs
 time_df = wrffuncs.build_time_df(path, domain)
@@ -50,6 +50,28 @@ def generate_frame(args):
     # Read data from file
         wrfin = Dataset(file_path) 
         data = getvar(wrfin, "mdbz", timeidx=timeidx)
+        pos = getvar(wrfin,"FLSHP", timeidx=timeidx,meta=False)
+        neg = getvar(wrfin, "FLSHN", timeidx=timeidx,meta=False)
+        posic = getvar(wrfin, "FLSHFEDICP", timeidx=timeidx,meta=False)
+        negic = getvar(wrfin, "FLSHFEDICN", timeidx=timeidx,meta=False)
+        poscg = getvar(wrfin, "FLSHFEDCGP", timeidx=timeidx,meta=False)
+        negcg = getvar(wrfin, "FLSHFEDCGN", timeidx=timeidx,meta=False)
+
+
+        if np.any(pos) > 0:
+            print("Positive channel")
+        if np.any(neg) > 0:
+            print("Negative channel")
+        if np.any(posic) > 0:
+            print("Positive IC")
+        if np.any(negic) > 0:
+            print("Negative IC")
+        if np.any(poscg) > 0:
+            print("Positive CG")
+        if np.any(negcg) > 0:
+            print("Negative CG")
+
+        return "Done"
         #print("Read in WRF data")
         cart_proj = get_cartopy(data)
 

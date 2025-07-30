@@ -15,9 +15,9 @@ the nearest gridbox to that point
 """
 
 # --- USER INPUT ---
-wrf_date_time = datetime(1997,1,12,1,52,00)
+wrf_date_time = datetime(2022,11,17,12,00,00)
 domain = 2
-lat_lon = [43.598, -75.918]
+lat_lon = [43.455345, -76.510498]
 
 SIMULATION = 1 # If comparing runs
 path = f"/data2/white/WRF_OUTPUTS/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"

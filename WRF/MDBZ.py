@@ -14,7 +14,7 @@ Plot of the simulated composite reflectivty ('mdbz') with/without wind barbs
 """
 
 # --- USER INPUT ---
-wrf_date_time = datetime(2022,11,17,19,35,00)
+wrf_date_time = datetime(2022,11,17,12,00,00)
 domain = 2
 
 windbarbs = False
