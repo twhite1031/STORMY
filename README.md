@@ -1,2 +1,2 @@
-# WRF
-Python scripts for Weather Research and Forecasting (WRF) model
+# STORMY
+Various python scripts used for data analysis within meteorology.
