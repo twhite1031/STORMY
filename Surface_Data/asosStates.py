@@ -87,7 +87,7 @@ if all_data:
 else:
     print("No data returned.")
 
-#######################33
+#######################
 # WRF Time
 
 path = f"/data2/white/wrf/WRFV4.5.2/run/"

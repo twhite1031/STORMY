@@ -4,7 +4,7 @@ import cartopy.crs as crs
 import cartopy.feature as cfeature
 from cartopy.feature import NaturalEarthFeature
 from wrf import (to_np,interplevel, getvar, get_cartopy, cartopy_xlim, cartopy_ylim, latlon_coords)
-import wrffuncs
+import STORMY
 from datetime import datetime
 from metpy.plots import ctables
 import pandas as pd
@@ -26,7 +26,7 @@ savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}
 # --- END USER INPUT ---
 
 # Build/Find the time data for the model runs
-time_df = wrffuncs.build_time_df(path, domain)
+time_df = STORMY.build_time_df(path, domain)
 obs_time = pd.to_datetime(wrf_date_time)
 
 # Compute absolute time difference
