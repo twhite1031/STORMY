@@ -11,7 +11,7 @@ STORMY is updated frequently, re-install for the latest version.
 <br><br>
 
 # Environment Installation
-There are a plethora of packages which enable use of STORMY
+There are a plethora of packages which enable use of STORMY.
 A conda environment (.yml) is provided [here](https://github.com/twhite1031/STORMY/setup_envs)
 
 <br><br>
