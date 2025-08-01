@@ -10,7 +10,7 @@ from wrf import (getvar, to_np, get_cartopy, latlon_coords, vertcross,
 from scipy.ndimage import label,  generate_binary_structure
 from skimage.measure import regionprops
 import cartopy.feature as cfeature
-import wrffuncs
+import STORMY
 from datetime import datetime
 import pandas as pd
 from mpl_toolkits.mplot3d import Axes3D
@@ -25,16 +25,16 @@ then classifying the region as a cloud band for analysis
 """
 
 # --- USER INPUT ---
-start_time, end_time  = datetime(2022,11,18,13,30), datetime(2022, 11, 18,14, 00)
+start_time, end_time  = datetime(2022,11,18,13,50), datetime(2022, 11, 18,14, 00)
 domain = 2
 
-INTERACTIVE = False # Set to False for non-interactive (auto-run) mode
-SHOW_FIGS = False # Do not display completed figures
+INTERACTIVE = True # Set to False for non-interactive (auto-run) mode
+SHOW_FIGS = True # Do not display completed figures
 USE_MAX_DBZ = True  # Toggle this to switch between lat/lon and max dBZ
 
 # Threshold to identify the snow band (e.g., cloud fraction > .1)
 threshold = 1
-lat_lon = [43.86935, -76.164764]  # Coordinates to start cloud check
+lat_lon = [43.86935, -76.164764]  # (Optional) Coordinates to start cloud check
 ht_level = 15
 
 aspect_ratio_thresh = 2.5
@@ -50,7 +50,7 @@ savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}
 # --- END USER INPUT ---
 
 # Build/Find the time data for the model runs
-time_df = wrffuncs.build_time_df(path, domain)
+time_df = STORMY.build_time_df(path, domain)
 
 # Filter time range based on start_time and end_time
 time_mask = (time_df["time"] >= start_time) & (time_df["time"] <= end_time)
@@ -155,80 +155,6 @@ def show_fig_with_keypress(key='enter'):
     pressed = plt.waitforbuttonpress()
     plt.close()
 
-# === Plot simulated maximum reflectivity ===
-def plot_mdbz(max_dbz,mask_cases):
-    
-    # Collapse cloud mask (this one should always exist)
-    cloud_mask_2d = np.max(mask_cases["cloud"], axis=0)
-        
-    # Get the lat/lon points 
-    lats, lons = latlon_coords(max_dbz)
-
-    # Get the cartopy projection object
-    cart_proj = get_cartopy(max_dbz)
-
-    # Create the figure
-    fig = plt.figure(figsize=(12,9))
-    ax = plt.axes(projection=cart_proj)
-
-    # Download and create the states, land, and oceans using cartopy features
-    states = cfeature.NaturalEarthFeature(category='cultural', scale='50m',
-                                      facecolor='none',
-                                      name='admin_1_states_provinces')
-    land = cfeature.NaturalEarthFeature(category='physical', name='land',
-                                    scale='50m',
-                                    facecolor=cfeature.COLORS['land'])
-
-    lakes = cfeature.NaturalEarthFeature(category='physical',name='lakes',scale='50m',facecolor="none",edgecolor="blue")
-    ocean = cfeature.NaturalEarthFeature(category='physical', name='ocean',
-                                     scale='50m',
-                                    facecolor=cfeature.COLORS['water'])
-
-    # Add Cartopy features
-    ax.add_feature(land,zorder=0)
-    ax.add_feature(ocean,zorder=0)
-    ax.add_feature(lakes,zorder=0)
-    ax.add_feature(states, edgecolor='gray',zorder=2)
-    
-    # Add the gridlines
-    gl = ax.gridlines(color="black", linestyle="dotted",draw_labels=True, x_inline=False, y_inline=False)
-    gl.xlabel_style = {'rotation': 'horizontal','size': 14,'ha':'center'} # Change 14 to your desired font size
-    gl.ylabel_style = {'size': 14}  # Change 14 to your desired font size
-    gl.xlines = True
-    gl.ylines = True
-
-    gl.top_labels = False  # Disable top labels
-    gl.right_labels = False  # Disable right labels
-    gl.xpadding = 20
-
-    # Plot Reflectivity Contours
-    levels = [5,10, 15, 20, 25, 30, 35, 40, 45,50,55,60]
-    cf = ax.contourf(to_np(lons), to_np(lats), to_np(max_dbz), levels=levels,cmap="NWSRef",transform=crs.PlateCarree(), zorder=4)
-
-    # Final touches
-    ax.set_xlim(cartopy_xlim(max_dbz))
-    ax.set_ylim(cartopy_ylim(max_dbz))
-    plt.title(f"Simulated Composite Reflectivity at {matched_time}")
-    plt.xlabel("Longitude")
-    plt.ylabel("Latitude")
-
-    plt.suptitle(
-        f"Mean height {mean_start_height} index {ht_level} | {len(lat_inds)} gridboxes | Threshold {threshold} | Attempt {SIMULATION}\n"
-        f"Starting Check at {lat_lon[0]} {lat_lon[1]}"
-    )
-
-    # Save the figure
-    os.makedirs(savepath, exist_ok=True)
-    filename = f"plancloud_ht{ht_level}T{threshold}_A{SIMULATION}D{domain}_{timestamp_str}.png"
-    plt.savefig(os.path.join(savepath, filename), dpi=150)
-    if SHOW_FIGS:
-        plt.show(block=False)
-        print("Press any key to continue...")
-        plt.waitforbuttonpress()
-        plt.close()
-    else:
-        plt.close()
-
 # === Plan view of cloud and flash regions ===
 def plot_plan_cloud(max_dbz, mask_cases):
     '''
@@ -253,6 +179,7 @@ def plot_plan_cloud(max_dbz, mask_cases):
         `timestamp_str`, `SHOW_FIGS`.
     - Saves the figure to disk and optionally displays it.
     '''
+
     # Collapse cloud mask (this one should always exist)
     cloud_mask_2d = np.max(mask_cases["cloud"], axis=0)
 
@@ -267,41 +194,41 @@ def plot_plan_cloud(max_dbz, mask_cases):
 
     # Create the figure
     fig = plt.figure(figsize=(12,9))
-    ax = plt.axes(projection=cart_proj)
+    ax1 = fig.add_subplot(1, 2, 1, projection=cart_proj)
+    ax2 = fig.add_subplot(1, 2, 2, projection=cart_proj)  
 
     # Download and create the states, land, and oceans using cartopy features
-    states = cfeature.NaturalEarthFeature(category='cultural', scale='50m',
-                                      facecolor='none',
-                                      name='admin_1_states_provinces')
-
-    land = cfeature.NaturalEarthFeature(category='physical', name='land',
-                                    scale='50m',
-                                    facecolor=cfeature.COLORS['land'])
-
+    borders = cfeature.NaturalEarthFeature('cultural', 'admin_0_countries', '50m', facecolor='none')
+    states = cfeature.NaturalEarthFeature(category='cultural', scale='50m',facecolor='none',name='admin_1_states_provinces')
+    land = cfeature.NaturalEarthFeature(category='physical', name='land',scale='50m',facecolor=cfeature.COLORS['land'])
     lakes = cfeature.NaturalEarthFeature(category='physical',name='lakes',scale='50m',facecolor="none",edgecolor="blue")
-    ocean = cfeature.NaturalEarthFeature(category='physical', name='ocean',
-                                     scale='50m',
-                                    facecolor=cfeature.COLORS['water'])
+    ocean = cfeature.NaturalEarthFeature(category='physical', name='ocean',scale='50m',facecolor=cfeature.COLORS['water'])
 
-    # Add Cartopy features
-    ax.add_feature(land,zorder=0)
-    ax.add_feature(ocean,zorder=0)
-    ax.add_feature(lakes,zorder=0)
-    ax.add_feature(states, edgecolor='gray',zorder=2)
-    
-    # Add the gridlines
-    gl = ax.gridlines(color="black", linestyle="dotted",draw_labels=True, x_inline=False, y_inline=False)
-    gl.xlabel_style = {'rotation': 'horizontal','size': 14,'ha':'center'} # Change 14 to your desired font size
-    gl.ylabel_style = {'size': 14}  # Change 14 to your desired font size
-    gl.xlines = True
-    gl.ylines = True
+    for ax in [ax1, ax2]:
+        ax.add_feature(borders, edgecolor='gray', linewidth=0.5)
+        ax.add_feature(lakes, edgecolor='lightgray', facecolor='none', linewidth=0.5)
+        ax.add_feature(states, edgecolor='lightgray', linewidth=0.5)
+        ax.add_feature(ocean,zorder=0)
+        
+        ax.set_xlabel("Longitude")
+        ax.set_ylabel("Latitude")
 
-    gl.top_labels = False  # Disable top labels
-    gl.right_labels = False  # Disable right labels
-    gl.xpadding = 20
+        # Add the gridlines
+        gl = ax.gridlines(color="black", linestyle="dotted",draw_labels=True, x_inline=False, y_inline=False)
+        gl.xlabel_style = {'rotation': 'horizontal','size': 14,'ha':'center'} # Change 14 to your desired font size
+        gl.ylabel_style = {'size': 14}  # Change 14 to your desired font size
+        gl.xlines = True
+        gl.ylines = True
+
+        gl.top_labels = False  # Disable top labels
+        gl.right_labels = False  # Disable right labels
+        gl.xpadding = 20
+
+        ax.set_xlim(cartopy_xlim(max_dbz))
+        ax.set_ylim(cartopy_ylim(max_dbz))
 
     # Plot Cloud Region (red)
-    cf = ax.contourf(
+    cf = ax2.contourf(
         to_np(lons), to_np(lats), to_np(cloud_mask_2d.astype(float)),
         levels=[0.5, 1.5], colors=['red'], alpha=0.3,
         transform=crs.PlateCarree(), zorder=4
@@ -309,27 +236,25 @@ def plot_plan_cloud(max_dbz, mask_cases):
 
     # Plot Flash Region (yellow)
     if flash_mask_2d is not None:
-        cf_flash = ax.contourf(
+        cf_flash = ax2.contourf(
             to_np(lons), to_np(lats), to_np(flash_mask_2d.astype(float)),
             levels=[0.5, 1.5], colors=['yellow'], alpha=0.6,
             transform=crs.PlateCarree(), zorder=5
         )
 
-     
+    # Plot Reflectivity Contours
+    cf = ax1.contourf(to_np(lons), to_np(lats), to_np(max_dbz), np.linspace(0,70,100),cmap="NWSRef",transform=crs.PlateCarree(), zorder=4)
+
     # Add patch legend
     legend_elements = [
         Patch(facecolor='red', edgecolor='red', label='Cloud Region'),
         Patch(facecolor='yellow', edgecolor='yellow', label='Flash Region')
     ]
-    ax.legend(handles=legend_elements, loc='upper right')
+    ax2.legend(handles=legend_elements, loc='upper right')
 
     # Final touches
-    ax.set_xlim(cartopy_xlim(max_dbz))
-    ax.set_ylim(cartopy_ylim(max_dbz))
-    plt.title(f"Cloud region linked to flash at {matched_time}")
-    plt.xlabel("Longitude")
-    plt.ylabel("Latitude")
-
+    ax2.set_title(f"Cloud region linked to flash at {matched_time}")
+    ax1.set_title(f"Simulated Composite Reflectivity at {matched_time}")
     plt.suptitle(
         f"Mean height {mean_start_height} index {ht_level} | {len(lat_inds)} gridboxes | Threshold {threshold} | Attempt {SIMULATION}\n"
         f"Starting Check at {lat_lon[0]} {lat_lon[1]}"
@@ -561,7 +486,7 @@ def plot_3d_voxel(vert_velocity, land_mask, mask_cases):
     ax.set_title(f"3D Cloud Structure in Grid Space (Psuedo lat/lon) at {matched_time}")
 
     plt.tight_layout()
-    plt.savefig(savepath + f"3Dcloudvox_ht{ht_level}T{threshold}_A{SIMULATION}D{domain}_{timestamp_str}.png")
+    plt.savefig(savepath + f"3DCLOUDVOX_HT{ht_level}T{threshold}_A{SIMULATION}D{domain}_{timestamp_str}.png")
     plt.show() if SHOW_FIGS else plt.close()
 
 
@@ -576,6 +501,42 @@ def plot_3d_voxel_mixingratio(name, var, mask_cases):
         "WATER VAPOR": "yellow"
     }
 
+    # Manipulate mixing ratio to use or not use zeros
+    positive_var_mask = var > 0
+    mean_val = var[positive_var_mask].mean()
+    print(mean_val)
+    std_mag = 10
+    std_val = var[positive_var_mask].std() * std_mag
+    print(std_val)
+    highlight_threshold = mean_val + std_val
+    print(highlight_threshold)
+    # Set up land and water visibility
+    # === Expand land mask to shape (1, y, x) and convert to NumPy ===
+    land_voxel_layer = to_np(land_mask.expand_dims(bottom_top=[0]))  # (1, y, x)
+
+    # === Extract cloud mask at base level (y, x) and cast to boolean ===
+    cloud_start = to_np(mask_cases["cloud"][ht_level, :, :]).astype(bool)  # (y, x)
+
+    # === Extract 2D slice of land layer ===
+    land_2d = land_voxel_layer[0]  # shape: (y, x)
+
+    # === Mask land/water values to only show where cloud exists ===
+    land_masked = np.where(cloud_start, land_2d, np.nan)  # (y, x)
+
+    # === Add back z=0 dimension to make (1, y, x)
+    land_masked_3d = land_masked[np.newaxis, :, :]  # (1, y, x)
+
+    # === Transpose to (x, y, z) for voxel plotting
+    land_voxels = np.transpose(land_masked_3d, (2, 1, 0))  # shape: (x, y, z=1)
+
+    # === Define colors
+    land_colors = np.empty(land_voxels.shape, dtype=object)
+    land_colors[land_voxels == 1] = 'tan'   # land
+    land_colors[land_voxels == 0] = 'blue'  # water
+
+    # === Plot: mask out np.nan from display
+    facecolors = np.ma.masked_where(np.isnan(land_voxels), land_colors)
+    mask = ~np.isnan(land_voxels)
 
     fig = plt.figure(figsize=(10, 8))
     ax = fig.add_subplot(111, projection='3d')
@@ -591,15 +552,42 @@ def plot_3d_voxel_mixingratio(name, var, mask_cases):
 
     # *** New Mixing Ratio Check ***
     cloud_mask_vox = np.transpose(mask_cases["cloud"], (2, 1, 0))
-    variable_mask = np.transpose((mask_cases["cloud"]) & (var > var.mean()), (2, 1, 0))
+    variable_mask = np.transpose((mask_cases["cloud"]) & (var > highlight_threshold), (2, 1, 0))
 
     # Plot voxels
-    ax.voxels(variable_mask, facecolors=field_colors.get(name, "black"),alpha=0.6,label="Cloud")
-    ax.voxels(cloud_mask_vox, facecolors='lightblue', edgecolor=None, alpha=0.4,label=f"{name} > {var.mean()} g/kg")
-    
+    ax.voxels(variable_mask, facecolors=field_colors.get(name, "black"),alpha=0.6)
+    ax.voxels(cloud_mask_vox, facecolors='lightblue', edgecolor=None, alpha=0.4)
+    ax.voxels(mask, facecolors=facecolors, alpha=0.6)
+
+    # Manually create legend handles
+    handles = [
+    Patch(color=field_colors.get(name, "black"), label=f"{name} > {highlight_threshold:.3f} g/kg (+{std_mag}σ)"),
+    Patch(color='lightblue', label="Cloud Region"),
+    ]
+
+    ax.legend(handles=handles, loc="upper right")
     # Axes and appearance
     ax.view_init(elev=10, azim=-90)
 
+     # Psuedo lat/lon ticks
+    lat2d, lon2d = latlon_coords(max_dbz)
+
+    # Sample lon/lat along center rows/cols for tick labeling
+    x_ticks = np.arange(x_dim)
+    x_labels = np.round(to_np(lon2d[lat2d.shape[0]//2, :]), 2)
+
+    y_ticks = np.arange(y_dim)
+    y_labels = np.round(to_np(lat2d[:, lon2d.shape[1]//2]), 2)
+
+
+    # Set axis ticks and labels
+    ax.set_xticks(x_ticks[::10])
+    ax.set_xticklabels(x_labels[::10])
+    ax.set_xlabel("Longitude")
+    
+    ax.set_yticks(y_ticks[::10])
+    ax.set_yticklabels(y_labels[::10])
+    ax.set_ylabel("Latitude")
     
     x_min, x_max = lon_inds.min(), lon_inds.max()
     y_min, y_max = lat_inds.min(), lat_inds.max()
@@ -609,13 +597,10 @@ def plot_3d_voxel_mixingratio(name, var, mask_cases):
     ax.set_ylim(y_min - 5, (y_max + 5))
     ax.set_zlim(0, (z_max + 3))
     
-    ax.set_xlabel("X (grid)")
-    ax.set_ylabel("Y (grid)")
     ax.set_zlabel("Z (grid)")
-    ax.set_title(f"3D Cloud Structure (Grid Space) at {matched_time}")
+    ax.set_title(f"3D Cloud Structure in Grid Space (Psuedo lat/lon) at {matched_time}")
 
-    plt.tight_layout()
-    plt.savefig(savepath + f"3Dcloudvox_ht{ht_level}T{threshold}_A{SIMULATION}D{domain}_{timestamp_str}.png")
+    plt.savefig(savepath + f"3DCLOUDVOX_MR_HT{ht_level}T{threshold}_A{SIMULATION}D{domain}_{timestamp_str}.png")
     plt.show() if SHOW_FIGS else plt.close()
 
 def plot_3d_scatter(ht_agl,mask_cases):
@@ -914,7 +899,7 @@ for idx, filename in enumerate(filelist):
         ("cloudnolight", cloud_without_flash),
         ("cloud", cloud_all)  # Final catch-all regardless of lightning
     ]
-
+    
     # Loop through each group and store masked data
     for group_name, storage_dict in groups:
         mask = mask_cases.get(group_name)
@@ -929,7 +914,7 @@ for idx, filename in enumerate(filelist):
         # storage_dict["reflectivity"].append(max_dbz[mask])  # Uncomment if needed
 
     print("Values stored for clouds, cloud regions with lightning, and cloud regions without lightning")
-
+    '''
     # === Stats and Histograms for Cloud ===
     for case_name, mask in mask_cases.items():
         print(f"\n===== STATS FOR {case_name.upper()} =====")
@@ -946,16 +931,18 @@ for idx, filename in enumerate(filelist):
             # Prompt user for each type
             prompt_plot(f"Plot {name} histogram for {case_name}?", lambda: plot_q_histogram(var, mask))
             prompt_plot(f"Plot {name} 2D histogram by height for {case_name}?", lambda: plot_q_2d_histogram(var, mask))
-    
-    prompt_plot(f"Plot vertical velocity histogram for {case_name}?", lambda: plot_w_histogram(vert_velocity, mask))
-    prompt_plot("Plot plan view of the cloud highlighting flash regions?", lambda: plot_plan_cloud(max_dbz, mask_cases))
-    prompt_plot("Plot simulated composite reflectivity?", lambda: plot_mdbz(max_dbz, mask_cases))
-    prompt_plot(f"Plot 3D scatter of the cloud?", lambda: plot_3d_scatter(ht_agl,mask_cases))
+    '''
 
+    #prompt_plot(f"Plot vertical velocity histogram for {case_name}?", lambda: plot_w_histogram(vert_velocity, mask))
+    prompt_plot("Plot plan view of the cloud highlighting flash regions?", lambda: plot_plan_cloud(max_dbz, mask_cases))
+    #prompt_plot("Plot simulated composite reflectivity?", lambda: plot_mdbz(max_dbz, mask_cases))
+    #prompt_plot(f"Plot 3D scatter of the cloud?", lambda: plot_3d_scatter(ht_agl,mask_cases))
+
+    
     if INTERACTIVE == True:
         prompt_plot(f"Plot 3D voxels of the cloud?", lambda: plot_3d_voxel(vert_velocity, land_mask, mask_cases))
         for name, data in mixing_ratios.items():
-            prompt_plot(f"Plot 3D Voxels highlightning above average {name}?", lambda: plot_3d_voxel_mixingratio(name, data, mask_cases))
+            prompt_plot(f"Plot 3D Voxels highlightning {name}?", lambda: plot_3d_voxel_mixingratio(name, data, mask_cases))
     else:
         print("Skipping Voxel plot to save time")
 
@@ -1077,7 +1064,7 @@ filetime_start, filetime_end = start_time.strftime("%Y%m%d%H%M"), end_time.strft
 df_stats.to_csv(os.path.join(savepath, f"cloud_stats_{filetime_start}_{filetime_end}.csv"), index=False)
 print(f"Saved histograms and summary statistics in: {savepath}")
 
-df_raw.to_csv(os.path.join(savepath, f"cloud_var_rawdata_{filetime_start}_{filetime_end}.csv"), index=False)
+df_raw.to_csv(os.path.join(savepath, f"cloudD{domain}A{SIMULATION}_rawdata_{filetime_start}_{filetime_end}.csv"), index=False)
 
 
 

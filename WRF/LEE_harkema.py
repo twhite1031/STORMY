@@ -10,11 +10,11 @@ import cartopy.feature as cfeature
 import pandas as pd
 from datetime import datetime, timedelta
 from pyproj import Geod
-import wrffuncs
+import STORMY
 
 
 # --- USER INPUT ---
-wrf_date_time = datetime(2022,11,18,23,00,00)
+wrf_date_time = datetime(2022,11,18,13,50,00)
 domain = 2
 
 start_point = CoordPair(lat=43.86935, lon=-76.669)  # Example coordinates for A
@@ -27,7 +27,7 @@ savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}
 # --- END USER INPUT ---
 
 # Build/Find the time data for the model runs
-time_df = wrffuncs.build_time_df(path, domain)
+time_df = STORMY.build_time_df(path, domain)
 obs_time = pd.to_datetime(wrf_date_time)
 
 # Compute absolute time difference
@@ -64,6 +64,38 @@ with Dataset(matched_file) as ds:
     flash_cross = vertcross(flash_chan_pos, z, wrfin=ds, start_point=start_point, end_point=end_point, latlon=True)
     w_cross = vertcross(w, z, wrfin=ds, start_point=start_point, end_point=end_point, latlon=True)
     ter_line = interpline(ter, wrfin=ds, start_point=start_point,end_point=end_point)
+    flash_init_cross = vertcross(flash_init, z, wrfin=ds, start_point=start_point, end_point=end_point)
+    height_cross = vertcross(z, z, wrfin=ds, start_point=start_point, end_point=end_point)
+
+# Set y and x axis for cross section, all should be the same
+xs = np.arange(0, dbz_cross.shape[-1], 1)
+ys = to_np(dbz_cross.coords["vertical"])
+
+# Step 1: Compute total distance (great circle) between endpoints 
+geod = Geod(ellps="WGS84")
+_, _, total_distance_m = geod.inv(start_point.lon, start_point.lat,
+                                  end_point.lon, end_point.lat)
+total_distance_km = total_distance_m / 1000
+
+# Step 2: Map xs indices to real km distance (assuming linear spacing)
+nx = len(xs)
+xs_km = np.linspace(0, total_distance_km, nx)
+xs = xs_km # !!! If you want the x index of each variable to mean km distance (instead of just indexes of points)
+
+# === Determine Flash Init Location ===
+lats, lons = latlon_coords(flash_init)
+flash_surface = np.max(to_np(flash_init), axis=0)
+
+y_idx, x_idx = np.where(flash_surface == 1.0)
+flash_lat = to_np(lats)[y_idx, x_idx] # 2D Plan Index
+flash_lon = to_np(lons)[y_idx, x_idx] # 2D Plan Index
+
+z_idx, x_idx = np.where(flash_cross == 1.0)
+flash_x = xs[x_idx][0]  # x-axis = horizontal distance
+
+z_idx, y_idx, x_idx = np.where(to_np(flash_init) == 1.0)
+height_3d = to_np(z)
+flash_heights = height_3d[z_idx, y_idx, x_idx]
 
 # === Fixing Gap for Cross Sections ===
 # Make a copy of the z cross data. 
@@ -93,25 +125,10 @@ fig, axs = plt.subplots(3, 1, figsize=(18, 12), sharex=True)
 plt.subplots_adjust(hspace=0.35)  # Increase this for more space (default is ~0.2)
 axs[0].set_title(f"WRF Vertical Cross-Section (Init: 2022-11-17 00:00:00, Valid: {matched_time})", loc='left')
 
-# Set y and x axis for cross section, all should be the same
-xs = np.arange(0, dbz_cross.shape[-1], 1)
-ys = to_np(dbz_cross.coords["vertical"])
-
-# Step 1: Compute total distance (great circle) between endpoints 
-geod = Geod(ellps="WGS84")
-_, _, total_distance_m = geod.inv(start_point.lon, start_point.lat,
-                                  end_point.lon, end_point.lat)
-total_distance_km = total_distance_m / 1000
-
-# Step 2: Map xs indices to real km distance (assuming linear spacing)
-nx = len(xs)
-xs_km = np.linspace(0, total_distance_km, nx)
-xs = xs_km # !!! If you want the x index of each variable to mean km distance (instead of just indexes of points)
-print(xs)
-
 # === Panel A: Reflectivity ===
 cs1 = axs[0].contourf(xs,ys,to_np(dbz_cross_filled), levels=np.linspace(0, 75, 500), cmap="NWSRef")
 #axs[0].contour(xs, ys, to_np(dbz_cross), levels=[10, 20,30, 40, 50,60], colors='black', linewidths=0.5) # Enhance visibility of reflectivity bins
+
 
 cbar = plt.colorbar(cs1, ax=axs[0], orientation="horizontal", pad=0.22, aspect=100)
 cbar.set_label("Reflectivity (dBZ)")
@@ -136,9 +153,11 @@ levels = np.concatenate((levels_neg, [0], levels_pos))
 
 
 cs2 = axs[1].contourf(xs, ys, to_np(charge_cross_filled), levels=levels, cmap='bwr', norm=norm)
+
 # Colorbar
 cbar = plt.colorbar(cs2, ax=axs[1], orientation='horizontal', extend='both', pad=0.22, aspect=100)
 cbar.set_label("Total Charge Density (C / m^3)")
+
 # This sets tick *locations* that match SymLogNorm behavior
 cbar.locator = SymmetricalLogLocator(base=10, linthresh=1e-13)
 
@@ -169,6 +188,7 @@ levels = np.linspace(vmin, vmax, 200)
 cs3 = axs[2].contourf(xs,ys,to_np(flash_cross),levels=levels, cmap="bwr",norm=norm)
 cbar = plt.colorbar(cs3, ax=axs[2], orientation="horizontal",pad=0.22, aspect=100)
 cbar.set_label("Net Positive/Negative Channel Count (#)")
+
 # Set custom ticks
 tick_vals = [-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5]
 cbar.set_ticks(tick_vals)
@@ -191,8 +211,10 @@ y_plot = ys[zg]                   # in meters
 w_plot = to_np(w_cross)[zg, xg]   # vertical velocity in m/s
 
 ticks = np.arange(0, total_distance_km + 1, 5) # Set km ticks
+
 for ax in axs:
     ax.fill_between(xs, 0, to_np(ter_line), facecolor="saddlebrown")
+    ax.scatter(flash_x, flash_heights, c='yellow', marker='*', s=30, label='Flash Init')
     #ax.quiver(x_plot, y_plot, np.zeros_like(w_plot), w_plot, scale=100, width=0.002, color='black', zorder=10)
     ax.tick_params(labelbottom=True) # Show X ticks
     ax.set_xticks(ticks)
@@ -229,6 +251,9 @@ mdbz_plot = ax_map.contourf(to_np(lons), to_np(lats), to_np(mdbz),
 
 # Add cross-section line
 ax_map.plot([start_lon, end_lon], [start_lat, end_lat], 'k-', marker='.',linewidth=2, transform=ccrs.PlateCarree())
+
+# Add flash location
+ax_map.scatter(flash_lon, flash_lat, s=30, c='yellow', marker='*', label='Flash Init', transform=ccrs.PlateCarree(),zorder=5)
 
 # Label endpoints A and B
 ax_map.text(start_lon, start_lat, 'A', fontsize=12, fontweight='bold', transform=ccrs.PlateCarree(),

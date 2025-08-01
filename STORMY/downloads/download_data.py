@@ -423,7 +423,7 @@ def download_WSR88D(radar, DateTimeIni=None, DateTimeFin=None, path_out=''):
             print(f"{scan.filename} already exists")
         else:
             print(f"Downloading {scan.filename}")
-            conn.download(scan, output_directory)
+            conn.download(scan, path_out)
 
     print('\n')
     
@@ -621,83 +621,72 @@ def download_ASOS(states=[], start_time=None, end_time=None, path_out='asos_data
     print(f"Data saved to {path_out}\n")
     return df_all
 
-def download_MRMS(time, field, tbuffer=10, path_out='mrms'):
+def download_MRMS(field, start_time, end_time, path_out='mrms'):
     """
-    Download the closest MRMS grib2.gz file from NOAA's AWS S3 archive
-    and unzip it to the specified local directory.
+    Download all MRMS grib2.gz files between start_time and end_time
+    from NOAA's AWS S3 archive and unzip them to the specified local directory.
 
     Parameters:
     ----------
-    time : datetime.datetime
-        Target time for the desired MRMS product.
     field : str
         MRMS field name (e.g., 'PrecipRate', 'Reflectivity', etc.).
-    tbuffer : int, optional (default=10)
-        Time window in minutes to search for the closest available MRMS scan.
+    start_time : datetime.datetime
+        Start of the desired time window.
+    end_time : datetime.datetime
+        End of the desired time window.
     path_out : str, optional (default='mrms')
-        Directory to save the downloaded and unzipped GRIB2 file.
+        Directory to save the downloaded and unzipped GRIB2 files.
 
     Returns:
     -------
-    unzip_filename : str or None
-        Full path to the unzipped .grib2 file if found and downloaded;
-        None if no file was found within the specified time window.
-
-    Notes:
-    ------
-    - Uses public access to the `noaa-mrms-pds` S3 bucket (via anonymous S3).
-    - Automatically creates the output directory if it does not exist.
-    - Skips downloading if the unzipped file already exists.
-    - Assumes filenames are consistent with the MRMS AWS structure and include
-      a timestamp formatted as YYYYMMDD-HHMMSS in the last 24 to 9 characters of the key.
+    files_downloaded : list of str
+        List of paths to the unzipped .grib2 files downloaded within the time window.
     """
-    
+
     s3 = boto3.client('s3', config=Config(signature_version=UNSIGNED))
     os.makedirs(path_out, exist_ok=True)
 
-    save_filename = os.path.join(path_out, f"{field}{time.strftime('%Y%m%d%H')}.grib2.gz")
-    unzip_filename = save_filename[:-3]
-
-    # Skip download if already unzipped
-    if os.path.exists(unzip_filename):
-        print(f"{unzip_filename} already exists.")
-        return unzip_filename
-
-    # Find closest matching file on S3
+    files_downloaded = []
+    prefix = f"CONUS/{field}/{start_time.strftime('%Y%m%d')}"
     paginator = s3.get_paginator('list_objects_v2')
-    prefix = f"CONUS/{field}/{time.strftime('%Y%m%d')}"
     page_iterator = paginator.paginate(Bucket='noaa-mrms-pds', Prefix=prefix)
 
-    selected_key = None
-    min_diff = timedelta(minutes=(tbuffer))
     for page in page_iterator:
         for obj in page.get('Contents', []):
             try:
                 key = obj['Key']
                 timestamp_str = key[-24:-9]
                 current_dt = datetime.strptime(timestamp_str, "%Y%m%d-%H%M%S")
-                time_diff = abs(current_dt - time)
-                if time_diff < min_diff:
-                    selected_key = key
-                    min_diff = time_diff
-            except Exception:
+
+                if start_time <= current_dt <= end_time:
+                    save_filename = os.path.join(path_out, f"{field}_{current_dt.strftime('%Y%m%d%H%M%S')}.grib2.gz")
+                    unzip_filename = save_filename[:-3]
+
+                    if os.path.exists(unzip_filename):
+                        print(f"{unzip_filename} already exists. Skipping.")
+                        files_downloaded.append(unzip_filename)
+                        continue
+
+                    print(f"Downloading {key}")
+                    s3.download_file('noaa-mrms-pds', key, save_filename)
+
+                    with gzip.open(save_filename, 'rb') as gz_file:
+                        with open(unzip_filename, 'wb') as out_file:
+                            shutil.copyfileobj(gz_file, out_file)
+
+                    os.remove(save_filename)
+                    print(f"Unzipped to {unzip_filename}")
+                    files_downloaded.append(unzip_filename)
+
+            except Exception as e:
+                print(f"Failed to process key: {key} — {e}")
                 continue
 
-    if not selected_key:
-        print(f"No MRMS file found within ±{tbuffer} minutes of {time}")
-        return None
-
-    # Download and unzip
-    print(f"Downloading {selected_key}")
-    s3.download_file('noaa-mrms-pds', selected_key, save_filename)
-
-    with gzip.open(save_filename, 'rb') as gz_file:
-        with open(unzip_filename, 'wb') as out_file:
-            shutil.copyfileobj(gz_file, out_file)
-
-    os.remove(save_filename)
-    print(f"Downloaded and unzipped to {unzip_filename}\n")
-    return unzip_filename
+    if not files_downloaded:
+        print(f"No MRMS files found between {start_time} and {end_time}")
+    print('\n')
+    
+    return files_downloaded
 
 def download_ERA5_SINGLE(start_time, end_time, variables, area, path_out=''):
     """

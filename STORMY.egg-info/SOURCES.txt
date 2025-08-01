@@ -5,5 +5,9 @@ STORMY.egg-info/PKG-INFO
 STORMY.egg-info/SOURCES.txt
 STORMY.egg-info/dependency_links.txt
 STORMY.egg-info/top_level.txt
+STORMY/WRF/__init__.py
+STORMY/WRF/wrffuncs.py
 STORMY/downloads/__init__.py
 STORMY/downloads/download_data.py
+STORMY/radar/__init__.py
+STORMY/radar/radarfuncs.py

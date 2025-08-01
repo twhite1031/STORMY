@@ -9,11 +9,9 @@ from cartopy.mpl.ticker import LatitudeFormatter, LongitudeFormatter
 from netCDF4 import Dataset
 from wrf import (getvar, to_np, get_cartopy, latlon_coords, vertcross,
                  interpline, CoordPair,cartopy_ylim,cartopy_xlim)
-import wrffuncs
+import STORMY
 from datetime import datetime
 import pandas as pd
-
-
 
 # --- USER INPUT ---
 wrf_date_time = datetime(2022,11,18,13,50,00)
@@ -26,7 +24,7 @@ savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}
 # --- END USER INPUT ---
 
 # Build/Find the time data for the model runs
-time_df = wrffuncs.build_time_df(path, domain)
+time_df = STORMY.build_time_df(path, domain)
 obs_time = pd.to_datetime(wrf_date_time)
 
 # Compute absolute time difference between model times and input time
@@ -56,7 +54,7 @@ print(lons)
 # Get the cartopy projection object
 cart_proj = get_cartopy(CTT)
 
-path = '/data2/white/DATA/SATELLITE/'
+path = '/data2/white/DATA/MISC/SATELLITE/'
 file = 'OR_ABI-L2-CMIPF-M6C13_G16_s20223221350207_e20223221359527_c20223221400014.nc'
 
 pad = 0.75  # degrees, to match WRF and Satellite
