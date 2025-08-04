@@ -33,7 +33,7 @@ conda activate useSTORMY
 <br><br>
 
 # Jupyter Tutorial
-(In Progress) Find the jupyter notebook examples for the last version [here](https://github.com/twhite1031/STORMY/)
+(In Progress) Find the jupyter notebook examples for the last version [here](https://github.com/twhite1031/STORMY/blob/main/CHANGELOG.md)
 <br><br>
 
 # Change log
