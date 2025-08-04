@@ -37,7 +37,7 @@ conda activate useSTORMY
 <br><br>
 
 # Change log
-All notable changes to this project will be documented in this [file](https://github.com/twhite1031/STORMY/CHANGELOG.md).
+All notable changes to this project will be documented in this [file](https://github.com/twhite1031/STORMY/blob/main/CHANGELOG.md)
 <br><br>
 
 # Contact
