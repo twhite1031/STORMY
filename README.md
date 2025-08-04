@@ -4,12 +4,9 @@ Python packages and scripts to manipulate Meteorological Data for Research
 <br><br>
 
 # Version
-1.0
-
-<br><br>
+1.0 <br>
 STORMY is updated frequently, re-install for the latest version.
 <br><br>
-
 # Environment Installation
 There are a plethora of packages which enable use of STORMY.
 A conda environment (.yml) is provided [here](https://github.com/twhite1031/STORMY/setup_envs)
@@ -39,11 +36,6 @@ conda activate useSTORMY
 
 # Script Tutorial
 Find the jupyter notebook examples for the last version [here](https://github.com/twhite1031/STORMY/)
-<br><br>
-
-# Installation
-You can install **GOES** on Python 2 or 3 on Linux, Windows or other using the following commands.
-
 <br><br>
 
 # Change log
