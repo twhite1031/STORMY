@@ -4,8 +4,7 @@ Python packages and scripts to manipulate Meteorological Data for Research
 <br><br>
 
 # Version
-1.0 <br>
-STORMY is updated frequently, re-install for the latest version.
+1.0 - STORMY is updated frequently, re-install for the latest version.
 <br><br>
 # Environment Installation
 There are a plethora of packages which enable use of STORMY.
@@ -30,12 +29,11 @@ Activate conda environment to use scripts:
 conda activate useSTORMY
 ```
 
-
-**Note**: Due to the large number of packages, installation may take >20 minutes. Please be patient.
+**Note**: Due to the large number of packages, installation may take >15 minutes. Please be patient.
 <br><br>
 
-# Script Tutorial
-Find the jupyter notebook examples for the last version [here](https://github.com/twhite1031/STORMY/)
+# Jupyter Tutorial
+**In Progress** Find the jupyter notebook examples for the last version [here](https://github.com/twhite1031/STORMY/)
 <br><br>
 
 # Change log
