@@ -597,6 +597,15 @@ def plot_3d_voxel_mixingratio(name, var, mask_cases, percentile=90):
     cloud_threshold = 0.5  # Cloud threshold for voxel plotting due to interpolation
     var_threshold  = np.nanpercentile(var_interp, percentile) # set percentile for highlighting (e.g. 90 would be Top 10%)
 
+    print(f"{percentile}th percentile cutoff:", var_threshold)
+
+    # Quick histogram to verify var threshold
+    vals = var_interp[np.isfinite(var_interp)]
+    plt.hist(vals, bins=50)
+    plt.axvline(var_threshold, color='red', linestyle='--', label='90th percentile')
+    plt.legend()
+    plt.show()
+
     # Transpose to (x, y, z) for voxel plotting
     cloud_mask_vox = np.transpose(cloud_interp > cloud_threshold, (2, 1, 0))     
     var_vox = np.transpose((var_interp > var_threshold) & (cloud_interp > cloud_threshold), (2, 1, 0))
