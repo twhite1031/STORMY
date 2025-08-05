@@ -671,20 +671,20 @@ def plot_3d_voxel_mixingratio(name, var, mask_cases, percentile=90):
     ax.set_ylim(y_min-5, y_max + 5)
     ax.set_ylabel("Latitude (°)",labelpad=15)
 
-    # --- Correct Z ticks: keep empty gap, label in km, position in indices ---
-    z_step_km = 0.5                              # label every 1 km (adjust as you like)
-    z_ticks_m = np.arange(0, z_max + 1, z_step_km * 1000)   # tick heights in meters
+    # Z axis (real height using z_uniform)
+    z_ticks = np.arange(0, z_max + 1, max(.5, (z_max) // 5))
+    
+    # Convert ticks in meters to voxel indices
+    z_ticks_idx = np.round(z_ticks / dz).astype(int)
+    z_ticks_idx = z_ticks_idx[z_ticks_idx < len(z_uniform)]
 
-    # Map real heights (m) to voxel indices (0..len(z_uniform)-1)
-    z_tick_idx = np.round(z_ticks_m / dz).astype(int)
-    z_tick_idx = z_tick_idx[z_tick_idx < len(z_uniform)]     # clip to valid indices
+    # Labels in km
+    z_labels = np.round(z_uniform[z_ticks_idx] / 1000, 2)
 
-    # Labels in km for those ticks
-    z_labels_km = np.round(z_ticks_m[:len(z_tick_idx)] / 1000, 2)
-
-    ax.set_zticks(z_tick_idx)
-    ax.set_zticklabels(z_labels_km)
-    ax.set_zlim(0, len(z_uniform) - 1)            # z-limits in INDEX space
+    np.round(z_uniform[z_ticks] / 1000, 2)  # km
+    ax.set_zticks(z_ticks)
+    ax.set_zticklabels(z_labels)
+    ax.set_zlim(0, z_max + 5)
     ax.set_zlabel("Height AGL (km)", labelpad=15)
     
     # Spacing to prevent collision of axis labels and ticks
