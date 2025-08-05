@@ -39,7 +39,7 @@ threshold = 1
 lat_lon = [43.86935, -76.164764]  # (Optional) Coordinates to start cloud check
 ht_level = 15
 
-aspect_ratio_thresh = 2.5
+aspect_ratio_thresh = 2.5 # Not currenty applied
 
 # Define thresholds for LLAP band size (in gridpoints)
 min_gridboxes = 100   # minimum connected gridboxes
@@ -49,6 +49,7 @@ SIMULATION = 1 # If comparing runs
 path = f"/data2/white/WRF_OUTPUTS/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
 savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
 
+notes = "" # Add any notes you want to include in the figure suptitle (Top of the figure window)
 # --- END USER INPUT ---
 
 # Build/Find the time data for the model runs
@@ -56,9 +57,7 @@ time_df = STORMY.build_time_df(path, domain)
 
 # Filter time range based on start_time and end_time
 time_mask = (time_df["time"] >= start_time) & (time_df["time"] <= end_time)
-
 time_df = time_df[time_mask].reset_index(drop=True)
-
 filelist = time_df["filename"].tolist()
 timelist = time_df["time"].tolist()
 timeidxlist = time_df["timeidx"].tolist()
@@ -175,37 +174,18 @@ def plot_plan_cloud(max_dbz, mask_cases):
 
     Notes:
     ------
-    - Requires several global variables to be defined in the script:
-        `matched_time`, `mean_start_height`, `ht_level`, `lat_inds`,
-        `threshold`, `SIMULATION`, `lat_lon`, `savepath`, `domain`,
-        `timestamp_str`, `SHOW_FIGS`.
     - Saves the figure to disk and optionally displays it.
     '''
-
-    # Collapse cloud mask (this one should always exist)
+    # Collapse cloud mask and flash mask (if exist)
     cloud_mask_2d = np.max(mask_cases["cloud"], axis=0)
-
-    # Optional masks: flash_mask and no_flash_mask
     flash_mask_2d = np.max(mask_cases["cloudlight"], axis=0) if "cloudlight" in mask_cases else None
         
-    # Get the lat/lon points 
-    lats, lons = latlon_coords(max_dbz)
-
-    # Get the cartopy projection object
-    cart_proj = get_cartopy(max_dbz)
-
     # Create the figure
     fig = plt.figure(figsize=(12,9))
     ax1 = fig.add_subplot(1, 2, 1, projection=cart_proj)
     ax2 = fig.add_subplot(1, 2, 2, projection=cart_proj)  
 
-    # Download and create the states, land, and oceans using cartopy features
-    borders = cfeature.NaturalEarthFeature('cultural', 'admin_0_countries', '50m', facecolor='none')
-    states = cfeature.NaturalEarthFeature(category='cultural', scale='50m',facecolor='none',name='admin_1_states_provinces')
-    land = cfeature.NaturalEarthFeature(category='physical', name='land',scale='50m',facecolor=cfeature.COLORS['land'])
-    lakes = cfeature.NaturalEarthFeature(category='physical',name='lakes',scale='50m',facecolor="none",edgecolor="blue")
-    ocean = cfeature.NaturalEarthFeature(category='physical', name='ocean',scale='50m',facecolor=cfeature.COLORS['water'])
-
+    # Add map features and gridlines for both plots
     for ax in [ax1, ax2]:
         ax.add_feature(borders, edgecolor='gray', linewidth=0.5)
         ax.add_feature(lakes, edgecolor='lightgray', facecolor='none', linewidth=0.5)
@@ -216,18 +196,10 @@ def plot_plan_cloud(max_dbz, mask_cases):
         ax.set_ylabel("Latitude")
 
         # Add the gridlines
-        gl = ax.gridlines(color="black", linestyle="dotted",draw_labels=True, x_inline=False, y_inline=False)
-        gl.xlabel_style = {'rotation': 'horizontal','size': 14,'ha':'center'} # Change 14 to your desired font size
-        gl.ylabel_style = {'size': 14}  # Change 14 to your desired font size
-        gl.xlines = True
-        gl.ylines = True
-
-        gl.top_labels = False  # Disable top labels
-        gl.right_labels = False  # Disable right labels
-        gl.xpadding = 20
-
-        ax.set_xlim(cartopy_xlim(max_dbz))
-        ax.set_ylim(cartopy_ylim(max_dbz))
+        STORMY.format_gridlines(ax, color="black", linestyle="dotted", draw_labels=True, x_inline=False, y_inline=False )
+       
+        ax.set_xlim(WRF_xlim)
+        ax.set_ylim(WRF_ylim)
 
     # Plot Cloud Region (red)
     cf = ax2.contourf(
@@ -247,25 +219,23 @@ def plot_plan_cloud(max_dbz, mask_cases):
     # Plot Reflectivity Contours
     cf = ax1.contourf(to_np(lons), to_np(lats), to_np(max_dbz), np.linspace(0,70,100),cmap="NWSRef",transform=crs.PlateCarree(), zorder=4)
 
-    # Add patch legend
+    # Add patch legend for legend
     legend_elements = [
         Patch(facecolor='red', edgecolor='red', label='Cloud Region'),
         Patch(facecolor='yellow', edgecolor='yellow', label='Flash Region')
     ]
     ax2.legend(handles=legend_elements, loc='upper right')
 
-    # Final touches
+    # Setting titles
     ax2.set_title(f"Cloud region linked to flash at {matched_time}")
     ax1.set_title(f"Simulated Composite Reflectivity at {matched_time}")
-    plt.suptitle(
-        f"Mean height {mean_start_height} index {ht_level} | {len(lat_inds)} gridboxes | Threshold {threshold} | Attempt {SIMULATION}\n"
-        f"Starting Check at {lat_lon[0]} {lat_lon[1]}"
-    )
+    plt.suptitle(notes)
 
-    # Save the figure
-    os.makedirs(savepath, exist_ok=True)
+    # Set an identifiable filename and save the figure
     filename = f"plancloud_ht{ht_level}T{threshold}_A{SIMULATION}D{domain}_{timestamp_str}.png"
     plt.savefig(os.path.join(savepath, filename), dpi=150)
+
+    # Show the figure if requested
     if SHOW_FIGS:
         plt.show(block=False)
         print("Press any key to continue...")
@@ -274,6 +244,45 @@ def plot_plan_cloud(max_dbz, mask_cases):
     else:
         plt.close()
 
+def plot_w_histogram(vert_velocity, mask):
+    '''
+    Plots a histogram of vertical velocity (m/s) values within a masked region.
+
+    Parameters:
+    -----------
+    mask : np.ndarray of bool
+        Boolean array to apply to `vert_velocity` for selecting valid points.
+
+    Notes:
+    ------
+    '''
+    # Flatten the data, no need for more than 1D histogram
+    flat_data = vert_velocity[mask]
+    flat_data = flat_data[~np.isnan(flat_data)] # Remove NaNs
+
+    # Create the figure and plot the histogram
+    plt.figure(figsize=(8, 10))
+    plt.hist(flat_data, bins=50, edgecolor='black')
+    plt.title(f"Vertical Velocity Histogram (m/s) at {matched_time}")
+    plt.xlabel("Vertical Velocity (m/s)")
+    plt.ylabel("Frequency")
+    plt.grid(True)
+
+    plt.suptitle(notes)
+
+    # Set an identifiable filename and save the figure
+    filename = f"{case_name}_histw_ht{ht_level}T{threshold}_A{SIMULATION}D{domain}_{timestamp_str}.png"
+    plt.savefig(os.path.join(savepath, filename))
+    plt.show() if SHOW_FIGS else plt.close()
+
+    # Show the figure if requested
+    if SHOW_FIGS:
+        plt.show(block=False)
+        print("Press any key to continue...")
+        plt.waitforbuttonpress()
+        plt.close()
+    else:
+        plt.close()
 def plot_q_histogram(var, mask):
     '''
     Plots a 1D histogram of mixing ratios (g/kg) for data within a masked region.
@@ -288,13 +297,12 @@ def plot_q_histogram(var, mask):
 
     Notes:
     ------
-    Uses global variables: `name`, `matched_time`, `mean_start_height`, `ht_level`,
-    `lat_inds`, `threshold`, `SIMULATION`, `domain`, `timestamp_str`, `savepath`,
-    `SHOW_FIGS`, and `case_name`.
     '''
+    # Flatten the data, no need for more than 1D histogram
     flat_data = var[mask]
-    flat_data = flat_data[~np.isnan(flat_data)]
+    flat_data = flat_data[~np.isnan(flat_data)] # Remove NaNs
 
+    # Create the figure and plot the histogram
     plt.figure(figsize=(8, 10))
     plt.hist(flat_data, bins=50, edgecolor='black')
     plt.title(f"{name} Mixing Ratio Histogram (g/kg) at {matched_time}")
@@ -302,59 +310,85 @@ def plot_q_histogram(var, mask):
     plt.ylabel("Frequency")
     plt.grid(True)
 
-    plt.suptitle(
-        f"Mean height {mean_start_height:.1f}m | Level {ht_level} | Total Gridboxes: {len(lat_inds)} | "
-        f"T: {threshold} | A{SIMULATION} D{domain}"
-    )
+    plt.suptitle(notes)
 
+    # Set an identifiable filename and save the figure
     filename = f"{case_name}_hist{name[:3]}_ht{ht_level}T{threshold}_A{SIMULATION}D{domain}_{timestamp_str}.png"
     plt.savefig(os.path.join(savepath, filename))
-    plt.show() if SHOW_FIGS else plt.close()
 
-def plot_q_2d_histogram(var, mask):
-    '''
+    # Show the figure if requested
+    if SHOW_FIGS:
+        plt.show(block=False)
+        print("Press any key to continue...")
+        plt.waitforbuttonpress()
+        plt.close()
+    else:
+        plt.close()
+
+def plot_q_2d_histogram(var, mask, clip_percentile=99):
+    """
     Plots a 2D histogram of mixing ratio frequency versus height for a masked region.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     var : np.ndarray or xarray.DataArray
-        3D field of specific humidity or mixing ratio values in g/kg.
-
+        3D field (z, y, x) of specific humidity or mixing ratio values in g/kg.
     mask : np.ndarray of bool
-        Boolean mask with same shape as `var`, indicating where to sample data.
-
-    Notes:
-    ------
-    Assumes vertical dimension is the first axis (shape: [z, y, x]).
-    Uses global variables: `name`, `ht_agl`, `matched_time`, `threshold`, `ht_level`,
-    `SIMULATION`, `domain`, `timestamp_str`, `savepath`, `SHOW_FIGS`, and `case_name`.
-    '''
+        Boolean mask with the same shape as `var`, indicating where to sample data.
+    clip_percentile : float or None, optional
+        If set (e.g., 99), use that percentile as the upper limit for histogram bins.
+        If None, use the true maximum value (original behavior).
+    """
+    # Flatten the data, no need for more than 2D histogram
     flat_data = var[mask]
-    flat_data = flat_data[~np.isnan(flat_data)]
+    flat_data = flat_data[~np.isnan(flat_data)] # Remove NaNs
 
-    z_levels = var.shape[0]
-    mix_bins = np.linspace(0, np.nanmax(flat_data), 100)
+    # Determine bin edges for mixing ratios
+    if clip_percentile is not None:
+        upper = np.nanpercentile(flat_data, clip_percentile)
+        if not np.isfinite(upper):
+            upper = np.nanmax(flat_data)
+    else:
+        upper = np.nanmax(flat_data)
+
+    # Fallback for invalid/zero range
+    if not np.isfinite(upper) or upper <= 0:
+        print("Warning: Invalid upper limit for histogram bins. Using default value of 1e-6.")
+        upper = 1e-6
+
+    mix_bins = np.linspace(0.0, float(upper), 100)
+
+    z_levels = var.shape[0] # Grab height levels from the first dimension [z, y, x]
     masked_var = np.where(mask, var, np.nan)
 
     mean_heights = []
+
     hist_rows = []
     
     for z in range(z_levels):
-        if not np.any(mask[z]):
+        if not np.any(mask_np[z]):
             continue
-        level_data = masked_var[z].flatten()
-        level_data = level_data[~np.isnan(level_data)]
-        if len(level_data) == 0:
+
+        level_vals = var_np[z][mask_np[z]]
+        level_vals = level_vals[~np.isnan(level_vals)]
+        if level_vals.size == 0:
             continue
-        hist, _ = np.histogram(level_data, bins=mix_bins)
+
+        hist, _ = np.histogram(level_vals, bins=mix_bins)
         hist_rows.append(hist)
 
-        level_heights = ht_agl[z][mask[z]]
+        level_heights = np.asarray(ht_agl)[z][mask_np[z]]
         mean_heights.append(np.nanmean(level_heights))
 
-    hist_2d = np.array(hist_rows)
-    mean_heights = np.array(mean_heights)
+    if not hist_rows:
+        print("plot_q_2d_histogram: no valid level data after masking; nothing to plot.")
+        return
 
+    # Convert lists to numpy arrays for plotting
+    hist_2d = np.asarray(hist_rows)
+    mean_heights = np.asarray(mean_heights)
+    
+    # Create the figure and plot the 2D histogram
     plt.figure(figsize=(10, 8))
     plt.pcolormesh(mix_bins[:-1], mean_heights, hist_2d, shading='auto')
     plt.xlabel("Mixing Ratio (g/kg)")
@@ -367,73 +401,30 @@ def plot_q_2d_histogram(var, mask):
     plt.savefig(os.path.join(savepath, filename2d))
     plt.show() if SHOW_FIGS else plt.close()
 
-def plot_w_histogram(vert_velocity, mask):
-    '''
-    Plots a histogram of vertical velocity (m/s) values within a masked region.
-
-    Parameters:
-    -----------
-    mask : np.ndarray of bool
-        Boolean array to apply to `vert_velocity` for selecting valid points.
-
-    Notes:
-    ------
-    Uses global variable `vert_velocity` for the vertical velocity field.
-    Also depends on `matched_time`, `mean_start_height`, `ht_level`, `lat_inds`,
-    `threshold`, `SIMULATION`, `domain`, `timestamp_str`, `savepath`, `SHOW_FIGS`,
-    and `case_name`.
-    '''
-    flat_data = vert_velocity[mask]
-    flat_data = flat_data[~np.isnan(flat_data)]
-
-    plt.figure(figsize=(8, 10))
-    plt.hist(flat_data, bins=50, edgecolor='black')
-    plt.title(f"Vertical Velocity Histogram (m/s) at {matched_time}")
-    plt.xlabel("Vertical Velocity (m/s)")
-    plt.ylabel("Frequency")
-    plt.grid(True)
-
-    plt.suptitle(
-        f"Mean height {mean_start_height:.1f}m | Level {ht_level} | Gridboxes: {len(lat_inds)} | "
-        f"T: {threshold} | A{SIMULATION} D{domain}"
-    )
-
-    filename = f"{case_name}_histw_ht{ht_level}T{threshold}_A{SIMULATION}D{domain}_{timestamp_str}.png"
-    plt.savefig(os.path.join(savepath, filename))
-    plt.show() if SHOW_FIGS else plt.close()
-
 def plot_pyvista_3d(land_mask, vert_velocity, ht_agl, mask_cases):
-    # Assume these are already loaded (from WRF or NetCDF):
-    # z_agl: shape (z, y, x), height AGL [m]
-    # cloud: shape (z, y, x), boolean or float mask
-    # w:     shape (z, y, x), vertical velocity [m/s]
 
-    # === Expand land mask to shape (1, y, x) and convert to NumPy ===
-    land_voxel_layer = to_np(land_mask.expand_dims(bottom_top=[0]))  # (1, y, x)
+    # === Inputs assumed: land_mask (y, x), mask_cases["cloud"] (z, y, x), ht_level ===
 
-    # === Extract cloud mask at base level (y, x) and cast to boolean ===
-    cloud_start = to_np(mask_cases["cloud"][ht_level, :, :]).astype(bool)  # (y, x)
+    # 1) 2-D land mask as NumPy (ensure it's 0/1 or bool)
+    land_2d = np.asarray(land_mask)                    # (y, x)
+    land_bool = land_2d.astype(bool)
 
-    # === Extract 2D slice of land layer ===
-    land_2d = land_voxel_layer[0]  # shape: (y, x)
+    # 2) Cloud mask at the chosen level (boolean)
+    cloud_start = np.asarray(mask_cases["cloud"][ht_level, :, :], dtype=bool)  # (y, x)
 
-    # === Mask land/water values to only show where cloud exists ===
-    land_masked = np.where(cloud_start, land_2d, np.nan)  # (y, x)
+    # 3) Filled voxels: show cubes only where cloud exists at this level
+    #    ax.voxels expects (x, y, z) -> we’ll transpose at the end
+    filled_yx = cloud_start                            # (y, x)
 
-    # === Add back z=0 dimension to make (1, y, x)
-    land_masked_3d = land_masked[np.newaxis, :, :]  # (1, y, x)
+    # 4) Prepare colors for land/water; still in (y, x)
+    #    Land = 'tan', Water = 'blue'
+    colors_yx = np.empty_like(land_bool, dtype=object)
+    colors_yx[land_bool]  = 'tan'
+    colors_yx[~land_bool] = 'blue'
 
-    # === Transpose to (x, y, z) for voxel plotting
-    land_voxels = np.transpose(land_masked_3d, (2, 1, 0))  # shape: (x, y, z=1)
-
-    # === Define colors
-    land_colors = np.empty(land_voxels.shape, dtype=object)
-    land_colors[land_voxels == 1] = 'tan'   # land
-    land_colors[land_voxels == 0] = 'blue'  # water
-
-    # === Plot: mask out np.nan from display
-    facecolors = np.ma.masked_where(np.isnan(land_voxels), land_colors)
-    mask = ~np.isnan(land_voxels)
+    # 5) Move to voxel shape (x, y, z=1)
+    filled = filled_yx.T[:, :, None]                   # (x, y, 1) boolean
+    facecolors = colors_yx.T[:, :, None]               # (x, y, 1) object (color strings)
 
 
     # Convert to NumPy
@@ -491,7 +482,7 @@ def plot_pyvista_3d(land_mask, vert_velocity, ht_agl, mask_cases):
     ax.voxels(updraft_vox, facecolors='magenta', edgecolor=None, alpha=0.6, label='Strong Updraft')
 
     # === Plot land/water region ===
-    ax.voxels(mask, facecolors=facecolors, alpha=0.6)
+    ax.voxels(filled, facecolors=facecolors, alpha=0.6)
 
     # === Axis ticks and labels ===
     nz_uniform, ny, nx = cloud_interp.shape
@@ -984,247 +975,267 @@ def identify_connected_cloud(cloud_frac, ht, ht_agl, max_dbz, fed, threshold, ht
 # #####################################
 # Start looping through time (each file) #
 # ######################################
+if __name__ == "__main__":
 
-for idx, filename in enumerate(filelist):
-    failed_start = False
+    # Define cartopy features
+    borders = cfeature.NaturalEarthFeature('cultural', 'admin_0_countries', '50m', facecolor='none')
+    states  = cfeature.NaturalEarthFeature('cultural', 'admin_1_states_provinces', '50m', facecolor='none')
+    lakes   = cfeature.NaturalEarthFeature('physical', 'lakes',  '50m', facecolor='none', edgecolor='blue')
+    ocean   = cfeature.NaturalEarthFeature('physical', 'ocean',  '50m', facecolor=cfeature.COLORS['water'])
+    land = cfeature.NaturalEarthFeature(category='physical', name='land',scale='50m',facecolor=cfeature.COLORS['land'])
 
-    matched_time = timelist[idx]
-    matched_timeidx = timeidxlist[idx]
+    # Read a single file and any variable to get lat/lon and projection information
+    with Dataset(filelist[0]) as ds:
+        random_var = getvar(ds, "pressure", timeidx=0)
 
-    timestamp_str = timelist[idx].strftime("%Y%m%d_%H%M%S") # For filenames
+    # Get lat/lon coordinates and projection from WRF grid
+    lats, lons = latlon_coords(random_var)
+    cart_proj = get_cartopy(random_var)
 
-    print(f"Closest match: {matched_time} in file {filename} at time index {matched_timeidx}")
+    # Define limits for the WRF plots
+    WRF_xlim = cartopy_xlim(random_var)
+    WRF_ylim = cartopy_ylim(random_var)
 
-    # Get the WRF variables
-    with Dataset(filename) as ds:
+    for idx, filename in enumerate(filelist):
+        failed_start = False
 
-        # Convert desired coorindates to WRF gridbox coordinates
-        x_y = ll_to_xy(ds, lat_lon[0], lat_lon[1])
-        ht = getvar(ds, "z", timeidx=matched_timeidx)
-        ht_agl = getvar(ds, "height_agl",timeidx=matched_timeidx)
-        dbz = getvar(ds, "dbz", timeidx=matched_timeidx)
-        max_dbz = getvar(ds, "mdbz", timeidx=matched_timeidx)
-        p = getvar(ds, "pressure", timeidx=matched_timeidx)
-        sst = getvar(ds, "SSTSK", timeidx=matched_timeidx)
+        # Get the time information from the indiviudal file 
+        matched_time = timelist[idx]
+        matched_timeidx = timeidxlist[idx]
+        timestamp_str = timelist[idx].strftime("%Y%m%d_%H%M%S") # For filenames
 
+        print(f"Closest match: {matched_time} in file {filename} at time index {matched_timeidx}")
 
-        tc = getvar(ds, "tc", timeidx=matched_timeidx)
-        lats = getvar(ds, "lat", timeidx=matched_timeidx)
-        lons = getvar(ds, "lon",timeidx=matched_timeidx)
-        cloud_frac = getvar(ds, "CLDFRA",timeidx=matched_timeidx) 
-        land_mask = getvar(ds, "LANDMASK", timeidx=matched_timeidx)
-        fed = getvar(ds,"LIGHTDENS", timeidx=matched_timeidx,meta=False)
-        vert_velocity = getvar(ds, "wa",timeidx=matched_timeidx,meta=False)
+        # Get the WRF variables
+        with Dataset(filename) as ds:
 
-        # Multiply by 1000 to go from kg/kg to g/kg while reading data in
-        wv = getvar(ds, "QVAPOR", timeidx=matched_timeidx,meta=False) * 1000
-        snow = getvar(ds, "QSNOW", timeidx=matched_timeidx,meta=False) * 1000
-        ice = getvar(ds, "QICE", timeidx=matched_timeidx,meta=False) * 1000
-        graupel  = getvar(ds, "QGRAUP", timeidx=matched_timeidx,meta=False) * 1000
-        cloud = getvar(ds, "QCLOUD", timeidx=matched_timeidx, meta=False) * 1000
-        hail = getvar(ds,"QHAIL", timeidx=matched_timeidx, meta=False) * 1000
+            # Convert desired coorindates to WRF gridbox coordinates
+            x_y = ll_to_xy(ds, lat_lon[0], lat_lon[1])
+            ht = getvar(ds, "z", timeidx=matched_timeidx)
+            ht_agl = getvar(ds, "height_agl",timeidx=matched_timeidx)
+            dbz = getvar(ds, "dbz", timeidx=matched_timeidx)
+            max_dbz = getvar(ds, "mdbz", timeidx=matched_timeidx)
+            p = getvar(ds, "pressure", timeidx=matched_timeidx)
+            sst = getvar(ds, "SSTSK", timeidx=matched_timeidx)
 
 
-    # Define dict where masks will be stored
-    mask_cases = {}
-    
-    # Define dict of mixing ratios 
-    mixing_ratios = {
-        "SNOW": snow,
-        "GRAUPEL": graupel,
-        "ICE": ice,
-        "WATER_VAPOR": wv,
-        "CLOUD":cloud,
-        "HAIL":hail
-    }
-   
-    # Get cloud and flash masks, check if NO_CLOUD occured
-    result = identify_connected_cloud(cloud_frac, ht, ht_agl, max_dbz, fed, threshold, ht_level, x_y)
+            tc = getvar(ds, "tc", timeidx=matched_timeidx)
+            lats = getvar(ds, "lat", timeidx=matched_timeidx)
+            lons = getvar(ds, "lon",timeidx=matched_timeidx)
+            cloud_frac = getvar(ds, "CLDFRA",timeidx=matched_timeidx) 
+            land_mask = getvar(ds, "LANDMASK", timeidx=matched_timeidx)
+            fed = getvar(ds,"LIGHTDENS", timeidx=matched_timeidx,meta=False)
+            vert_velocity = getvar(ds, "wa",timeidx=matched_timeidx,meta=False)
 
-    if result == "NO_CLOUD":
-        print("!!! Skipping to next time !!!")
-        continue  # Skip to the next time file in loop
+            # Multiply by 1000 to go from kg/kg to g/kg while reading data in
+            wv = getvar(ds, "QVAPOR", timeidx=matched_timeidx,meta=False) * 1000
+            snow = getvar(ds, "QSNOW", timeidx=matched_timeidx,meta=False) * 1000
+            ice = getvar(ds, "QICE", timeidx=matched_timeidx,meta=False) * 1000
+            graupel  = getvar(ds, "QGRAUP", timeidx=matched_timeidx,meta=False) * 1000
+            cloud = getvar(ds, "QCLOUD", timeidx=matched_timeidx, meta=False) * 1000
+            hail = getvar(ds,"QHAIL", timeidx=matched_timeidx, meta=False) * 1000
 
-    # Unpack our results
-    (mean_start_height, mean_cloud_height, z_inds, lat_inds, lon_inds, had_lightning) = result
-    
-    # Ensure ht_agl is in NumPy only if absolutely necessary
-    ht_agl = to_np(ht_agl)
 
-    # Group definitions, use cloud but seperate based on lightning occurence
-    groups = [
-        ("cloud", cloud_all_with_lightning if had_lightning else cloud_all_without_lightning),
-        ("cloudlight", cloud_with_flash),
-        ("cloudnolight", cloud_without_flash),
-        ("cloud", cloud_all)  # Final catch-all regardless of lightning
-    ]
-    
-    # Loop through each group and store masked data
-    for group_name, storage_dict in groups:
-        mask = mask_cases.get(group_name)
-        if mask is None:
-            print(f"{group_name} not created")
-            continue
-
-        for name, var in mixing_ratios.items():
-            storage_dict[name].append(var[mask])
-
-        storage_dict["height_agl"].append(ht_agl[mask])
-        # storage_dict["reflectivity"].append(max_dbz[mask])  # Uncomment if needed
-
-    print("Values stored for clouds, cloud regions with lightning, and cloud regions without lightning")
-    '''
-    # === Stats and Histograms for Cloud ===
-    for case_name, mask in mask_cases.items():
-        print(f"\n===== STATS FOR {case_name.upper()} =====")
-        print(f"\n{case_name.upper()} has {len(lat_inds)} grid points")
-
-        for name, var in mixing_ratios.items():
-            flat_data = var[mask]
-            flat_data = flat_data[~np.isnan(flat_data)]
-            flat_data_compressed = flat_data.compressed()
-            
-            # Optional: print stats
-            print(f"\n{name} Mean: {np.ma.mean(flat_data_compressed):.3f}, Median: {np.ma.median(flat_data_compressed):.3f}, Std: {np.ma.std(flat_data_compressed):.3f}")
-           
-            # Prompt user for each type
-            prompt_plot(f"Plot {name} histogram for {case_name}?", lambda: plot_q_histogram(var, mask))
-            prompt_plot(f"Plot {name} 2D histogram by height for {case_name}?", lambda: plot_q_2d_histogram(var, mask))
-    '''
-
-    #prompt_plot(f"Plot vertical velocity histogram for {case_name}?", lambda: plot_w_histogram(vert_velocity, mask))
-    #prompt_plot("Plot plan view of the cloud highlighting flash regions?", lambda: plot_plan_cloud(max_dbz, mask_cases))
-    #prompt_plot("Plot simulated composite reflectivity?", lambda: plot_mdbz(max_dbz, mask_cases))
-    #prompt_plot(f"Plot 3D scatter of the cloud?", lambda: plot_3d_scatter(ht_agl,mask_cases))
-    prompt_plot(f"Plot 3D pyvista of the cloud?", lambda: plot_pyvista_3d(land_mask, vert_velocity, ht_agl, mask_cases))
-
-    
-    if INTERACTIVE == True:
-        prompt_plot(f"Plot 3D voxels of the cloud?", lambda: plot_3d_voxel(vert_velocity, land_mask, mask_cases))
-        for name, data in mixing_ratios.items():
-            prompt_plot(f"Plot 3D Voxels highlightning {name}?", lambda: plot_3d_voxel_mixingratio(name, data, mask_cases))
-    else:
-        print("Skipping Voxel plot to save time")
-
-       
-    
-# === Summary statistics collector ===
-summary_stats = []
-raw_data_rows = []
-
-all_groups = {
-    "cloud_with_flash": cloud_with_flash,
-    "cloud_without_flash": cloud_without_flash,
-    "cloud_all_with_lightning": cloud_all_with_lightning,
-    "cloud_all_without_lightning": cloud_all_without_lightning,
-    "cloud_all": cloud_all,
-}
-
-# === Per-time-step stats ===
-for group_name, group_dict in all_groups.items():
-    n_timesteps = len(timelist)
-
-    for i in range(n_timesteps):
-        current_time = timelist[i]
-        for var_name, var_list in group_dict.items():
-            try:
-                values = var_list[i]
-            except IndexError:
-                continue  # Skip this variable 
-            stats = {
-                "Group": group_name,
-                "Time": current_time,
-                "Variable": var_name,
-                "Mean": np.mean(values),
-                "Median": np.median(values),
-                "Std Dev": np.std(values),
-                "Min": np.min(values),
-                "Max": np.max(values),
-            }
-            summary_stats.append(stats)
-
-# === All-time stats ===
-for group_name, group_dict in all_groups.items():
-    for var_name, var_list in group_dict.items():
-
-        # Concatenate all time slices
-        try:
-            all_values = np.concatenate(var_list)
-        except ValueError:
-            continue  # Skip if variable is empty across all times
-
-        if all_values.size == 0:
-            continue
-
-        stats = {
-            "Group": group_name,
-            "Time": f"ALL",  # Label for all-time stats
-            "Variable": var_name,
-            "Mean": np.mean(all_values),
-            "Median": np.median(all_values),
-            "Std Dev": np.std(all_values),
-            "Min": np.min(all_values),
-            "Max": np.max(all_values),
+        # Define dict where masks will be stored
+        mask_cases = {}
+        
+        # Define dict of mixing ratios 
+        mixing_ratios = {
+            "SNOW": snow,
+            "GRAUPEL": graupel,
+            "ICE": ice,
+            "WATER_VAPOR": wv,
+            "CLOUD":cloud,
+            "HAIL":hail
         }
-        summary_stats.append(stats)
+    
+        # Get cloud and flash masks, check if NO_CLOUD occured
+        result = identify_connected_cloud(cloud_frac, ht, ht_agl, max_dbz, fed, threshold, ht_level, x_y)
 
-# === Raw data storing ===
-for group_name, group_dict in all_groups.items():
-    # Get height_agl list once for this group
-    heights_list = group_dict.get("height_agl", None)
+        if result == "NO_CLOUD":
+            print("!!! Skipping to next time !!!")
+            continue  # Skip to the next time file in loop
 
-    for var_name, var_list in group_dict.items():
-        if var_name in ["time", "height_agl"]:
-            continue
+        # Unpack our results
+        (mean_start_height, mean_cloud_height, z_inds, lat_inds, lon_inds, had_lightning) = result
+        
+        # Ensure ht_agl is in NumPy only if absolutely necessary
+        ht_agl = to_np(ht_agl)
 
-        for i, values in enumerate(var_list):
-            current_time = timelist[i]
-            
-            # Get matching height_agl values
-            if heights_list is None or i >= len(heights_list):
+        # Group definitions, use cloud but seperate based on lightning occurence
+        groups = [
+            ("cloud", cloud_all_with_lightning if had_lightning else cloud_all_without_lightning),
+            ("cloudlight", cloud_with_flash),
+            ("cloudnolight", cloud_without_flash),
+            ("cloud", cloud_all)  # Final catch-all regardless of lightning
+        ]
+        
+        # Loop through each group and store masked data
+        for group_name, storage_dict in groups:
+            mask = mask_cases.get(group_name)
+            if mask is None:
+                print(f"{group_name} not created")
                 continue
-            height_values = heights_list[i]
 
-            # Sanity check: matching lengths
-            if len(values) != len(height_values):
-                continue  # Skip if misaligned
+            for name, var in mixing_ratios.items():
+                storage_dict[name].append(var[mask])
 
-            # Store both value and height per gridpoint
-            for val, h in zip(values, height_values):
-                raw_data_rows.append({
+            storage_dict["height_agl"].append(ht_agl[mask])
+            # storage_dict["reflectivity"].append(max_dbz[mask])  # Uncomment if needed
+
+        print("Values stored for clouds, cloud regions with lightning, and cloud regions without lightning")
+        '''
+        # === Stats and Histograms for Cloud ===
+        for case_name, mask in mask_cases.items():
+            print(f"\n===== STATS FOR {case_name.upper()} =====")
+            print(f"\n{case_name.upper()} has {len(lat_inds)} grid points")
+
+            for name, var in mixing_ratios.items():
+                flat_data = var[mask]
+                flat_data = flat_data[~np.isnan(flat_data)]
+                flat_data_compressed = flat_data.compressed()
+                
+                # Optional: print stats
+                print(f"\n{name} Mean: {np.ma.mean(flat_data_compressed):.3f}, Median: {np.ma.median(flat_data_compressed):.3f}, Std: {np.ma.std(flat_data_compressed):.3f}")
+            
+                # Prompt user for each type
+                prompt_plot(f"Plot {name} histogram for {case_name}?", lambda: plot_q_histogram(var, mask))
+                prompt_plot(f"Plot {name} 2D histogram by height for {case_name}?", lambda: plot_q_2d_histogram(var, mask))
+        '''
+
+        #prompt_plot(f"Plot vertical velocity histogram for {case_name}?", lambda: plot_w_histogram(vert_velocity, mask))
+        #prompt_plot("Plot plan view of the cloud highlighting flash regions?", lambda: plot_plan_cloud(max_dbz, mask_cases))
+        #prompt_plot("Plot simulated composite reflectivity?", lambda: plot_mdbz(max_dbz, mask_cases))
+        #prompt_plot(f"Plot 3D scatter of the cloud?", lambda: plot_3d_scatter(ht_agl,mask_cases))
+        prompt_plot(f"Plot 3D pyvista of the cloud?", lambda: plot_pyvista_3d(land_mask, vert_velocity, ht_agl, mask_cases))
+
+        
+        if INTERACTIVE == True:
+            prompt_plot(f"Plot 3D voxels of the cloud?", lambda: plot_3d_voxel(vert_velocity, land_mask, mask_cases))
+            for name, data in mixing_ratios.items():
+                prompt_plot(f"Plot 3D Voxels highlightning {name}?", lambda: plot_3d_voxel_mixingratio(name, data, mask_cases))
+        else:
+            print("Skipping Voxel plot to save time")
+
+        
+        
+    # === Summary statistics collector ===
+    summary_stats = []
+    raw_data_rows = []
+
+    all_groups = {
+        "cloud_with_flash": cloud_with_flash,
+        "cloud_without_flash": cloud_without_flash,
+        "cloud_all_with_lightning": cloud_all_with_lightning,
+        "cloud_all_without_lightning": cloud_all_without_lightning,
+        "cloud_all": cloud_all,
+    }
+
+    # === Per-time-step stats ===
+    for group_name, group_dict in all_groups.items():
+        n_timesteps = len(timelist)
+
+        for i in range(n_timesteps):
+            current_time = timelist[i]
+            for var_name, var_list in group_dict.items():
+                try:
+                    values = var_list[i]
+                except IndexError:
+                    continue  # Skip this variable 
+                stats = {
                     "Group": group_name,
                     "Time": current_time,
                     "Variable": var_name,
-                    "Value": val,
-                    "Height_AGL": h
-                })
+                    "Mean": np.mean(values),
+                    "Median": np.median(values),
+                    "Std Dev": np.std(values),
+                    "Min": np.min(values),
+                    "Max": np.max(values),
+                }
+                summary_stats.append(stats)
+
+    # === All-time stats ===
+    for group_name, group_dict in all_groups.items():
+        for var_name, var_list in group_dict.items():
+
+            # Concatenate all time slices
+            try:
+                all_values = np.concatenate(var_list)
+            except ValueError:
+                continue  # Skip if variable is empty across all times
+
+            if all_values.size == 0:
+                continue
+
+            stats = {
+                "Group": group_name,
+                "Time": f"ALL",  # Label for all-time stats
+                "Variable": var_name,
+                "Mean": np.mean(all_values),
+                "Median": np.median(all_values),
+                "Std Dev": np.std(all_values),
+                "Min": np.min(all_values),
+                "Max": np.max(all_values),
+            }
+            summary_stats.append(stats)
+
+    # === Raw data storing ===
+    for group_name, group_dict in all_groups.items():
+        # Get height_agl list once for this group
+        heights_list = group_dict.get("height_agl", None)
+
+        for var_name, var_list in group_dict.items():
+            if var_name in ["time", "height_agl"]:
+                continue
+
+            for i, values in enumerate(var_list):
+                current_time = timelist[i]
+                
+                # Get matching height_agl values
+                if heights_list is None or i >= len(heights_list):
+                    continue
+                height_values = heights_list[i]
+
+                # Sanity check: matching lengths
+                if len(values) != len(height_values):
+                    continue  # Skip if misaligned
+
+                # Store both value and height per gridpoint
+                for val, h in zip(values, height_values):
+                    raw_data_rows.append({
+                        "Group": group_name,
+                        "Time": current_time,
+                        "Variable": var_name,
+                        "Value": val,
+                        "Height_AGL": h
+                    })
 
 
 
 
-# === Create DataFrame ===
-df_stats = pd.DataFrame(summary_stats)
-df_raw = pd.DataFrame(raw_data_rows)
+    # === Create DataFrame ===
+    df_stats = pd.DataFrame(summary_stats)
+    df_raw = pd.DataFrame(raw_data_rows)
 
-# === Optional: Sort for clean output ===
-df_stats.sort_values(by=["Group", "Variable", "Time"], inplace=True)
+    # === Optional: Sort for clean output ===
+    df_stats.sort_values(by=["Group", "Variable", "Time"], inplace=True)
 
-# === Print and Save ===
-pd.set_option("display.max_rows", None)
-pd.set_option("display.max_columns", None)
-pd.set_option("display.width", 120)
-pd.set_option("display.float_format", "{:.3f}".format)
+    # === Print and Save ===
+    pd.set_option("display.max_rows", None)
+    pd.set_option("display.max_columns", None)
+    pd.set_option("display.width", 120)
+    pd.set_option("display.float_format", "{:.3f}".format)
 
-print("\n=== Summary Statistics for Cloud Variables ===\n")
-print(df_stats.to_string(index=False))
+    print("\n=== Summary Statistics for Cloud Variables ===\n")
+    print(df_stats.to_string(index=False))
 
-# === Adjust time for filename
-filetime_start, filetime_end = start_time.strftime("%Y%m%d%H%M"), end_time.strftime("%Y%m%d%H%M"),
+    # === Adjust time for filename
+    filetime_start, filetime_end = start_time.strftime("%Y%m%d%H%M"), end_time.strftime("%Y%m%d%H%M"),
 
-df_stats.to_csv(os.path.join(savepath, f"cloud_stats_{filetime_start}_{filetime_end}.csv"), index=False)
-print(f"Saved histograms and summary statistics in: {savepath}")
+    df_stats.to_csv(os.path.join(savepath, f"cloud_stats_{filetime_start}_{filetime_end}.csv"), index=False)
+    print(f"Saved histograms and summary statistics in: {savepath}")
 
-df_raw.to_csv(os.path.join(savepath, f"cloudD{domain}A{SIMULATION}_rawdata_{filetime_start}_{filetime_end}.csv"), index=False)
+    df_raw.to_csv(os.path.join(savepath, f"cloudD{domain}A{SIMULATION}_rawdata_{filetime_start}_{filetime_end}.csv"), index=False)
 
 
 
