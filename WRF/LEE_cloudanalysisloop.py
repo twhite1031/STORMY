@@ -589,26 +589,28 @@ def plot_3d_voxel_mixingratio(name, var, mask_cases, percentile=90):
                 cloud_interp[:, j, i] = f_cloud(z_uniform)
                 var_interp[:, j, i] = f_w(z_uniform)
 
-            except Exception:
+            except Exception as e:
+                print(f"Error interpolating column at (j={j}, i={i}) as {e}")
                 continue
+    # Define cloud threshold for voxel plotting due to interpolation
+    cloud_threshold = 0.5  
+    in_cloud = (cloud_interp > cloud_threshold)
 
-    
-    # Define thresholds
-    cloud_threshold = 0.5  # Cloud threshold for voxel plotting due to interpolation
-    var_threshold  = np.nanpercentile(var_interp, percentile) # set percentile for highlighting (e.g. 90 would be Top 10%)
+    # Percentile computed ONLY from in-cloud values
+    vals = var_interp[in_cloud & np.isfinite(var_interp)]
+    var_threshold  = np.nanpercentile(vals, percentile) # set percentile for highlighting (e.g. 90 would be Top 10%)
 
     print(f"{percentile}th percentile cutoff:", var_threshold)
 
     # Quick histogram to verify var threshold
-    vals = var_interp[np.isfinite(var_interp)]
     plt.hist(vals, bins=50)
     plt.axvline(var_threshold, color='red', linestyle='--', label='90th percentile')
     plt.legend()
     plt.show()
 
     # Transpose to (x, y, z) for voxel plotting
-    cloud_mask_vox = np.transpose(cloud_interp > cloud_threshold, (2, 1, 0))     
-    var_vox = np.transpose((var_interp > var_threshold) & (cloud_interp > cloud_threshold), (2, 1, 0))
+    cloud_mask_vox = np.transpose(in_cloud, (2, 1, 0))     
+    var_vox = np.transpose((var_interp > var_threshold) & (in_cloud), (2, 1, 0))
 
 
     fig = plt.figure(figsize=(10, 8))
