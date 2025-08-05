@@ -435,7 +435,7 @@ def plot_3d_voxel_w(land_mask, vert_velocity, ht_agl, mask_cases):
     w_np = to_np(vert_velocity)
 
     # Define uniform vertical grid (AGL, in meters)
-    dz = 250
+    dz = 100
     z_max = np.nanmax(z_agl_np)
     z_uniform = np.arange(0, z_max + dz, dz)  # Arange vertical bins for interpolation
     nz_uniform = len(z_uniform)
@@ -515,18 +515,25 @@ def plot_3d_voxel_w(land_mask, vert_velocity, ht_agl, mask_cases):
     ax.set_yticks(y_ticks)
     ax.set_yticklabels(y_labels_all[y_ticks])
     ax.set_ylim(y_min-5, y_max + 5)
-    ax.set_ylabel("Latitude (°)",labelpad=15)
+    ax.set_ylabel("Latitude (°)",labelpad=20)
+    
+    # Round z_max (in meters) up to nearest multiple of dz
+    z_max_rounded = np.ceil(z_uniform[z_max] / dz) * dz  # ensures multiple of dz
 
-    # Z axis (real height using z_uniform)
-    z_ticks = np.arange(z_min, z_max + 1, max(1, (z_max - z_min) // 5))
-    z_labels = np.round(z_uniform[z_ticks] / 1000, 2)  # km
-    ax.set_zticks(z_ticks)
-    ax.set_zticklabels(z_labels)
-    ax.set_zlim(z_min, z_max + 5)
+    # Tick every 0.5 km (500 m)
+    z_ticks_m = np.arange(0, z_max_rounded + 1, 500)  # meters
+    z_labels_km = np.round(z_ticks_m / 1000, 2)       # km
+
+    # Convert to voxel indices for plotting
+    z_ticks_idx = (z_ticks_m / dz).astype(int)
+
+    ax.set_zticks(z_ticks_idx)
+    ax.set_zticklabels(z_labels_km)
+    ax.set_zlim(0, int(z_max_rounded / dz) + 1)
     ax.set_zlabel("Height AGL (km)", labelpad=15)
     
     # Spacing to prevent collision of axis labels and ticks
-    ax.tick_params(axis='y', pad=10)
+    ax.tick_params(axis='y', pad=15)
     ax.tick_params(axis='z', pad=10)
 
     # Add title
@@ -577,7 +584,7 @@ def plot_3d_voxel_mixingratio(name, var, mask_cases, percentile=90):
     var_np = to_np(var)
 
     # Define uniform vertical grid (AGL, in meters)
-    dz = 250
+    dz = 100
     z_max = np.nanmax(z_agl_np)
     z_uniform = np.arange(0, z_max + dz, dz)  # Arange vertical bins for interpolation
     nz_uniform = len(z_uniform)
@@ -607,6 +614,24 @@ def plot_3d_voxel_mixingratio(name, var, mask_cases, percentile=90):
             except Exception as e:
                 print(f"Error interpolating column at (j={j}, i={i}) as {e}")
                 continue
+    # --- If first interpolated height starts at ~dz (e.g., 250 m), prepend an empty 0 m layer ---
+    tol = 1e-6
+    if z_uniform[0] > 0 and np.isclose(z_uniform[0], dz, atol=tol):
+        print(f"First interpolated height is ~{dz} m — adding empty 0 m layer.")
+
+        # zeros shaped (1, ny, nx) to stack along the vertical axis
+        zero_layer_cloud = np.zeros((1, ny, nx), dtype=cloud_interp.dtype)
+        zero_layer_var   = np.zeros((1, ny, nx), dtype=var_interp.dtype)
+
+        # prepend along axis=0 (vertical)
+        cloud_interp = np.concatenate([zero_layer_cloud, cloud_interp], axis=0)
+        var_interp   = np.concatenate([zero_layer_var,   var_interp],   axis=0)
+
+        # update z_uniform to include 0 m at index 0
+        z_uniform = np.insert(z_uniform, 0, 0.0)
+    else:
+        print(f"First inerpolated height is 0: {z_uniform[0]}")
+    
     # Define cloud threshold for voxel plotting due to interpolation
     cloud_threshold = 0.5  
     in_cloud = (cloud_interp > cloud_threshold)
@@ -627,10 +652,20 @@ def plot_3d_voxel_mixingratio(name, var, mask_cases, percentile=90):
     cloud_mask_vox = np.transpose(in_cloud, (2, 1, 0))     
     var_vox = np.transpose((var_interp > var_threshold) & (in_cloud), (2, 1, 0))
 
-
+    # Find bounds where cloud exists
+    cloud_exists_x = np.any(cloud_mask_vox, axis=(1, 2))  # shape: (nx,)
+    cloud_exists_y = np.any(cloud_mask_vox, axis=(0, 2))  # shape: (ny,)
+    cloud_exists_z = np.any(cloud_mask_vox, axis=(0, 1))  # shape: (nz,)
+    x_min, x_max = np.where(cloud_exists_x)[0][[0, -1]]
+    y_min, y_max = np.where(cloud_exists_y)[0][[0, -1]]
+    z_min, z_max = np.where(cloud_exists_z)[0][[0, -1]]
+    
+    print(f"zmin {z_uniform[z_min]}")
+    print(f"zmax {z_uniform[z_max]}")
+    
     fig = plt.figure(figsize=(10, 8))
     ax = fig.add_subplot(111, projection='3d')
-
+    
     # Plotting voxels
     ax.voxels(cloud_mask_vox, facecolors='lightblue', edgecolor=None, alpha=0.4, label='Cloud') 
     ax.voxels(var_vox, facecolors=field_colors.get(name, "black"), edgecolor=None, alpha=0.6, label='{name} > {var_threshold:.3f} (g/kg)')
@@ -649,14 +684,7 @@ def plot_3d_voxel_mixingratio(name, var, mask_cases, percentile=90):
     x_labels_all = np.round(to_np(lons[center_y, :]), 2)  # longitude along center row
     y_labels_all = np.round(to_np(lats[:, center_x]), 2)  # latitude along center column
 
-    # Find bounds where cloud exists
-    cloud_exists_x = np.any(cloud_mask_vox, axis=(1, 2))  # shape: (nx,)
-    cloud_exists_y = np.any(cloud_mask_vox, axis=(0, 2))  # shape: (ny,)
-    cloud_exists_z = np.any(cloud_mask_vox, axis=(0, 1))  # shape: (nz,)
-    x_min, x_max = np.where(cloud_exists_x)[0][[0, -1]]
-    y_min, y_max = np.where(cloud_exists_y)[0][[0, -1]]
-    z_min, z_max = np.where(cloud_exists_z)[0][[0, -1]]
-
+    
     # X axis (longitude), 5 evenly spaced ticks (step size atleast 1)
     x_ticks = np.arange(x_min, x_max + 1, max(1, (x_max - x_min) // 5))
     ax.set_xticks(x_ticks)
@@ -669,25 +697,25 @@ def plot_3d_voxel_mixingratio(name, var, mask_cases, percentile=90):
     ax.set_yticks(y_ticks)
     ax.set_yticklabels(y_labels_all[y_ticks])
     ax.set_ylim(y_min-5, y_max + 5)
-    ax.set_ylabel("Latitude (°)",labelpad=15)
-
-    # Z axis (real height using z_uniform)
-    z_ticks = np.arange(0, z_max + 1, max(.5, (z_max) // 5))
+    ax.set_ylabel("Latitude (°)",labelpad=20)
     
-    # Convert ticks in meters to voxel indices
-    z_ticks_idx = np.round(z_ticks / dz).astype(int)
-    z_ticks_idx = z_ticks_idx[z_ticks_idx < len(z_uniform)]
+    # Round z_max (in meters) up to nearest 250 m
+    z_max_rounded = np.ceil(z_uniform[z_max] / dz) * dz  # ensures multiple of dz
 
-    # Labels in km
-    z_idx_ticks = np.arange(z_min, z_max + 1, max(1, (z_max - z_min) // 5))
-    z_labels = np.round(z_uniform[z_idx_ticks] / 1000, 2)  # km
+    # Tick every 0.5 km (500 m)
+    z_ticks_m = np.arange(0, z_max_rounded + 1, 500)  # meters
+    z_labels_km = np.round(z_ticks_m / 1000, 2)       # km
 
-    ax.set_zticks(z_idx_ticks)
-    ax.set_zticklabels(z_labels)
-    ax.set_zlim(z_min, z_max + 5)   
-    
+    # Convert to voxel indices for plotting
+    z_ticks_idx = (z_ticks_m / dz).astype(int)
+
+    ax.set_zticks(z_ticks_idx)
+    ax.set_zticklabels(z_labels_km)
+    ax.set_zlim(0, int(z_max_rounded / dz) + 1)
+    ax.set_zlabel("Height AGL (km)", labelpad=15)
+        
     # Spacing to prevent collision of axis labels and ticks
-    ax.tick_params(axis='y', pad=10)
+    ax.tick_params(axis='y', pad=15)
     ax.tick_params(axis='z', pad=10)
 
     # Viewing the band from the long axis side
@@ -700,9 +728,9 @@ def plot_3d_voxel_mixingratio(name, var, mask_cases, percentile=90):
     # Show the figure if requested
     if SHOW_FIGS:
         plt.show(block=False)
-        print("Press any key to continue...")
-        plt.waitforbuttonpress()
-        plt.close()
+        #print("Press any key to continue...")
+        #plt.waitforbuttonpress()
+        #plt.close()
     else:
         plt.close()
 
