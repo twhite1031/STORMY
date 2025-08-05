@@ -278,7 +278,7 @@ gl.right_labels = False  # Disable right labels
 gl.xpadding = 20
 
 # Optional: add colorbar
-cbar = plt.colorbar(mdbz_plot, ax=ax_map, orientation='vertical', shrink=0.8)
+cbar = plt.colorbar(mdbz_plot, ax=ax_map, orientation='vertical', shrink=.92)
 cbar.set_label("Reflectivity (dBZ)")
 cbar.set_ticks(np.arange(0,75,5))
 ax_map.set_title(f"Simulated Max Reflectivity at {matched_time} with Cross-Section A–B")
