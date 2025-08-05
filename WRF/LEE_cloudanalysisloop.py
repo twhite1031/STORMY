@@ -403,29 +403,22 @@ def plot_q_2d_histogram(var, mask, clip_percentile=99):
 
 def plot_pyvista_3d(land_mask, vert_velocity, ht_agl, mask_cases):
 
-    # === Inputs assumed: land_mask (y, x), mask_cases["cloud"] (z, y, x), ht_level ===
-
-    # 1) 2-D land mask as NumPy (ensure it's 0/1 or bool)
-    land_2d = np.asarray(land_mask)                    # (y, x)
+    # Set the WRF land mask to numpy and boolean
+    land_2d = np.asarray(land_mask)               
     land_bool = land_2d.astype(bool)
 
-    # 2) Cloud mask at the chosen level (boolean)
-    cloud_start = np.asarray(mask_cases["cloud"][ht_level, :, :], dtype=bool)  # (y, x)
+    # 2D Cloud mask at the starting ht_level, largest 2D section
+    cloud_2d = np.asarray(mask_cases["cloud"][ht_level, :, :], dtype=bool)  # (y, x)
+    filled_xy = cloud_2d  
 
-    # 3) Filled voxels: show cubes only where cloud exists at this level
-    #    ax.voxels expects (x, y, z) -> we’ll transpose at the end
-    filled_yx = cloud_start                            # (y, x)
-
-    # 4) Prepare colors for land/water; still in (y, x)
-    #    Land = 'tan', Water = 'blue'
+    # Define colors for land/water
     colors_yx = np.empty_like(land_bool, dtype=object)
-    colors_yx[land_bool]  = 'tan'
-    colors_yx[~land_bool] = 'blue'
+    colors_yx[land_bool]  = 'tan' # tan if land
+    colors_yx[~land_bool] = 'blue' # blue if water
 
-    # 5) Move to voxel shape (x, y, z=1)
-    filled = filled_yx.T[:, :, None]                   # (x, y, 1) boolean
+    # Add back z=0 dimension to make (x,y,z), applicable for the surface level
+    filled = filled_xy.T[:, :, None]                   # (x, y, 1) boolean
     facecolors = colors_yx.T[:, :, None]               # (x, y, 1) object (color strings)
-
 
     # Convert to NumPy
     z_agl_np = to_np(ht_agl)
@@ -435,13 +428,12 @@ def plot_pyvista_3d(land_mask, vert_velocity, ht_agl, mask_cases):
     # Define uniform vertical grid (AGL, in meters)
     dz = 250
     z_max = np.nanmax(z_agl_np)
-    z_uniform = np.arange(0, z_max, dz)  # shape: (nz_uniform,)
-
+    z_uniform = np.arange(0, z_max + dz, dz)  # Arange vertical bins for interpolation
     nz_uniform = len(z_uniform)
     nz, ny, nx = z_agl_np.shape
 
     # Initialize interpolated arrays
-    cloud_interp = np.full((nz_uniform, ny, nx), np.nan)
+    cloud_interp = np.full((nz_uniform, ny, nx), np.nan, dtype=float)
     w_interp = np.full_like(cloud_interp, np.nan)
 
     # Interpolate column-by-column
@@ -463,66 +455,41 @@ def plot_pyvista_3d(land_mask, vert_velocity, ht_agl, mask_cases):
             except Exception:
                 continue
 
-    
-    # Assume cloud_interp and w_interp are interpolated to z_uniform
-    # shape: (nz_uniform, ny, nx)
-
     # Transpose to (x, y, z) for voxel plotting
     cloud_mask_vox = np.transpose(cloud_interp > 0.5, (2, 1, 0))     # (x, y, z)
     updraft_vox = np.transpose((w_interp > 2.0) & (cloud_interp > 0.5), (2, 1, 0))
 
-    # === Create figure ===
+    # Create figure
     fig = plt.figure(figsize=(10, 8))
     ax = fig.add_subplot(111, projection='3d')
 
-    # === Plot cloud region ===
-    ax.voxels(cloud_mask_vox, facecolors='lightblue', edgecolor=None, alpha=0.4, label='Cloud')
-
-    # === Plot updraft region ===
+    # Plotting voxels
+    ax.voxels(cloud_mask_vox, facecolors='lightblue', edgecolor=None, alpha=0.4, label='Cloud') 
     ax.voxels(updraft_vox, facecolors='magenta', edgecolor=None, alpha=0.6, label='Strong Updraft')
-
-    # === Plot land/water region ===
     ax.voxels(filled, facecolors=facecolors, alpha=0.6)
 
-    # === Axis ticks and labels ===
-    nz_uniform, ny, nx = cloud_interp.shape
-    
-    # === Lat/lon from WRF projection ===
-    lat2d, lon2d = latlon_coords(max_dbz)  # or any WRF variable with the same shape
-
-    # === Sample lat/lon along center lines ===
-    center_y = lat2d.shape[0] // 2
-    center_x = lon2d.shape[1] // 2
-    x_labels_all = np.round(to_np(lon2d[center_y, :]), 2)  # longitude along center row
-    y_labels_all = np.round(to_np(lat2d[:, center_x]), 2)  # latitude along center column
-
-    # Psuedo lat/lon ticks
-    lat2d, lon2d = latlon_coords(max_dbz)
-
-    # Sample lon/lat along center rows/cols for tick labeling
-    x_ticks = np.arange(nx)
-    x_labels = np.round(to_np(lon2d[lat2d.shape[0]//2, :]), 2)
-
-    y_ticks = np.arange(ny)
-    y_labels = np.round(to_np(lat2d[:, lon2d.shape[1]//2]), 2)
+    # Sample lat/lon along center lines 
+    center_y = lats.shape[0] // 2 # center lat index of WRF original domain
+    center_x = lons.shape[1] // 2 # Center lon index of WRF original domain
+    x_labels_all = np.round(to_np(lons[center_y, :]), 2)  # longitude along center row
+    y_labels_all = np.round(to_np(lats[:, center_x]), 2)  # latitude along center column
 
     # Find bounds where cloud exists
-    cloud_exists_x = np.any(cloud_mask_vox, axis=(1, 2))  # shape: (x,)
-    cloud_exists_y = np.any(cloud_mask_vox, axis=(0, 2))  # shape: (y,)
-    cloud_exists_z = np.any(cloud_mask_vox, axis=(0, 1))  # shape: (z,)
-
+    cloud_exists_x = np.any(cloud_mask_vox, axis=(1, 2))  # shape: (nx,)
+    cloud_exists_y = np.any(cloud_mask_vox, axis=(0, 2))  # shape: (ny,)
+    cloud_exists_z = np.any(cloud_mask_vox, axis=(0, 1))  # shape: (nz,)
     x_min, x_max = np.where(cloud_exists_x)[0][[0, -1]]
     y_min, y_max = np.where(cloud_exists_y)[0][[0, -1]]
     z_min, z_max = np.where(cloud_exists_z)[0][[0, -1]]
 
-    # X axis (grid index or lon if you later add coords)
+    # X axis (longitude), 5 evenly spaced ticks (step size atleast 1)
     x_ticks = np.arange(x_min, x_max + 1, max(1, (x_max - x_min) // 5))
     ax.set_xticks(x_ticks)
     ax.set_xticklabels(x_labels_all[x_ticks])
     ax.set_xlim(x_min-5, x_max + 5)
     ax.set_xlabel("Longitude (°)")
 
-    # Y axis
+    # Y axis, 5 evenly spaced ticks (step size atleast 1)
     y_ticks = np.arange(y_min, y_max + 1, max(1, (y_max - y_min) // 5))
     ax.set_yticks(y_ticks)
     ax.set_yticklabels(y_labels_all[y_ticks])
@@ -548,95 +515,6 @@ def plot_pyvista_3d(land_mask, vert_velocity, ht_agl, mask_cases):
     ax.view_init(elev=10, azim=-90)
     plt.show()
    
-# === 3D Voxel Plot (grid-based, no lat/lon) === 
-def plot_3d_voxel(vert_velocity, land_mask, mask_cases):
-    fig = plt.figure(figsize=(10, 8))
-    ax = fig.add_subplot(111, projection='3d')
-
-    # === Expand land mask to shape (1, y, x) and convert to NumPy ===
-    land_voxel_layer = to_np(land_mask.expand_dims(bottom_top=[0]))  # (1, y, x)
-
-    # === Extract cloud mask at base level (y, x) and cast to boolean ===
-    cloud_start = to_np(mask_cases["cloud"][ht_level, :, :]).astype(bool)  # (y, x)
-
-    # === Extract 2D slice of land layer ===
-    land_2d = land_voxel_layer[0]  # shape: (y, x)
-
-    # === Mask land/water values to only show where cloud exists ===
-    land_masked = np.where(cloud_start, land_2d, np.nan)  # (y, x)
-
-    # === Add back z=0 dimension to make (1, y, x)
-    land_masked_3d = land_masked[np.newaxis, :, :]  # (1, y, x)
-
-    # === Transpose to (x, y, z) for voxel plotting
-    land_voxels = np.transpose(land_masked_3d, (2, 1, 0))  # shape: (x, y, z=1)
-
-    # === Define colors
-    land_colors = np.empty(land_voxels.shape, dtype=object)
-    land_colors[land_voxels == 1] = 'tan'   # land
-    land_colors[land_voxels == 0] = 'blue'  # water
-
-    # === Plot: mask out np.nan from display
-    facecolors = np.ma.masked_where(np.isnan(land_voxels), land_colors)
-    mask = ~np.isnan(land_voxels)
-
-    ax.voxels(mask, facecolors=facecolors, alpha=0.6)
-    # Print original shape (z, y, x)
-    z_dim, y_dim, x_dim = mask_cases["cloud"].shape
-    print("Original cloud mask shape (z, y, x):", z_dim, y_dim, x_dim)
-
-    # Transpose to match (x, y, z) voxel format
-    cloud_mask_vox = np.transpose(mask_cases["cloud"], (2, 1, 0)) # Downsample here if needed (e.g., [::2, ::2, ::2])
-    print("Voxel shape (x, y, z):", cloud_mask_vox.shape)
-
-    # *** New Updraft Check ***
-    updraft_threshold = 2.0 # m/s
-    strong_updraft_mask = np.transpose((mask_cases["cloud"]) & (vert_velocity > updraft_threshold), (2, 1, 0))
-
-    # Plot voxels
-    ax.voxels(strong_updraft_mask, facecolors='magenta',alpha=0.6,label="Cloud")
-    ax.voxels(cloud_mask_vox, facecolors='lightblue', edgecolor=None, alpha=0.4,label="Vertical Velocity > 2 m/s")
-   
-    # Axes and appearance
-    ax.view_init(elev=10, azim=-90)
-
-    # Psuedo lat/lon ticks
-    lat2d, lon2d = latlon_coords(max_dbz)
-
-    # Sample lon/lat along center rows/cols for tick labeling
-    x_ticks = np.arange(x_dim)
-    x_labels = np.round(to_np(lon2d[lat2d.shape[0]//2, :]), 2)
-
-    y_ticks = np.arange(y_dim)
-    y_labels = np.round(to_np(lat2d[:, lon2d.shape[1]//2]), 2)
-
-
-    # Set axis ticks and labels
-    ax.set_xticks(x_ticks[::10])
-    ax.set_xticklabels(x_labels[::10])
-    ax.set_xlabel("Longitude")
-
-
-    ax.set_yticks(y_ticks[::10])
-    ax.set_yticklabels(y_labels[::10])
-    ax.set_ylabel("Latitude")
-    
-    
-    x_min, x_max = lon_inds.min(), lon_inds.max()
-    y_min, y_max = lat_inds.min(), lat_inds.max()
-    z_min, z_max = z_inds.min(), z_inds.max()
-    
-    ax.set_xlim(x_min - 5, (x_max + 5))
-    ax.set_ylim(y_min - 5, (y_max + 5))
-    ax.set_zlim(0, (z_max + 3))
-    
-    ax.set_zlabel("Z (grid)")
-    ax.set_title(f"3D Cloud Structure in Grid Space (Psuedo lat/lon) at {matched_time}")
-
-    plt.tight_layout()
-    plt.savefig(savepath + f"3DCLOUDVOX_HT{ht_level}T{threshold}_A{SIMULATION}D{domain}_{timestamp_str}.png")
-    plt.show() if SHOW_FIGS else plt.close()
-
 
 def plot_3d_voxel_mixingratio(name, var, mask_cases):
 
@@ -973,7 +851,7 @@ def identify_connected_cloud(cloud_frac, ht, ht_agl, max_dbz, fed, threshold, ht
     )
 
 # #####################################
-# Start looping through time (each file) #
+# Function Implemntation #
 # ######################################
 if __name__ == "__main__":
 
@@ -1111,7 +989,6 @@ if __name__ == "__main__":
 
         
         if INTERACTIVE == True:
-            prompt_plot(f"Plot 3D voxels of the cloud?", lambda: plot_3d_voxel(vert_velocity, land_mask, mask_cases))
             for name, data in mixing_ratios.items():
                 prompt_plot(f"Plot 3D Voxels highlightning {name}?", lambda: plot_3d_voxel_mixingratio(name, data, mask_cases))
         else:
