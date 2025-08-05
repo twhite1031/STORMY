@@ -679,13 +679,12 @@ def plot_3d_voxel_mixingratio(name, var, mask_cases, percentile=90):
     z_ticks_idx = z_ticks_idx[z_ticks_idx < len(z_uniform)]
 
     # Labels in km
-    z_labels = np.round(z_uniform[z_ticks_idx] / 1000, 2)
+    z_idx_ticks = np.arange(z_min, z_max + 1, max(1, (z_max - z_min) // 5))
+    z_labels = np.round(z_uniform[z_idx_ticks] / 1000, 2)  # km
 
-    np.round(z_uniform[z_ticks] / 1000, 2)  # km
-    ax.set_zticks(z_ticks)
+    ax.set_zticks(z_idx_ticks)
     ax.set_zticklabels(z_labels)
-    ax.set_zlim(0, z_max + 5)
-    ax.set_zlabel("Height AGL (km)", labelpad=15)
+    ax.set_zlim(z_min, z_max + 5)   
     
     # Spacing to prevent collision of axis labels and ticks
     ax.tick_params(axis='y', pad=10)
