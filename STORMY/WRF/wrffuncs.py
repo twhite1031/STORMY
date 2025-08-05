@@ -266,3 +266,26 @@ def get_LMA_flash_data(start,tbuffer):
                     file.write(response.content)
                 print(f'{filename} downloaded successfully.')
 
+def format_gridlines(ax, **kwargs):
+    """
+    Apply consistent gridline formatting to a Cartopy Axes.
+
+    Parameters
+    ----------
+    ax : cartopy.mpl.geoaxes.GeoAxes
+        The axis to format.
+
+    kwargs : dict
+        Additional keyword arguments passed to ax.gridlines().
+        For example: color="black", linestyle="dotted", x_inline=False, y_inline=False
+    """
+    gl = ax.gridlines(draw_labels=True, **kwargs)
+    gl.xlabel_style = {'rotation': 'horizontal', 'size': 14, 'ha': 'center'}
+    gl.ylabel_style = {'size': 14}
+    gl.xlines = True
+    gl.ylines = True
+    gl.top_labels = False
+    gl.right_labels = False
+    gl.xpadding = 20
+    return gl
+

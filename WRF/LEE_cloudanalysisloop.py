@@ -397,9 +397,18 @@ def plot_q_2d_histogram(var, mask, clip_percentile=99):
     plt.colorbar(label="Frequency")
     plt.tight_layout()
 
+    # Set an identifiable filename and save the figure
     filename2d = f"{case_name}_2Dhist{name[:3]}_ht{ht_level}T{threshold}_A{SIMULATION}D{domain}_{timestamp_str}.png"
     plt.savefig(os.path.join(savepath, filename2d))
-    plt.show() if SHOW_FIGS else plt.close()
+    
+    # Show the figure if requested
+    if SHOW_FIGS:
+        plt.show(block=False)
+        print("Press any key to continue...")
+        plt.waitforbuttonpress()
+        plt.close()
+    else:
+        plt.close()
 
 def plot_3d_voxel_w(land_mask, vert_velocity, ht_agl, mask_cases):
 
@@ -523,12 +532,27 @@ def plot_3d_voxel_w(land_mask, vert_velocity, ht_agl, mask_cases):
     # Add title
     ax.set_title("3D Cloud and Updraft Structure")
 
-    # Axes and appearance
-    ax.view_init(elev=10, azim=-90)
-    plt.show()
+
+    # Show the figure if requested
+    if SHOW_FIGS:
+        plt.show(block=False)
+        print("Press any key to continue...")
+        plt.waitforbuttonpress()
+        plt.close()
+    else:
+        plt.close()
    
 
 def plot_3d_voxel_mixingratio(name, var, mask_cases, percentile=90):
+
+    # Colors to cycle through for each field (distinct from cloud color)
+    field_colors = {
+        "GRAUPEL": "orange",
+        "SNOW": "purple",
+        "ICE": "green",
+        "HAIL": "red",
+        "WATER VAPOR": "yellow"
+    }
 
     # Set the WRF land mask to numpy and boolean
     land_2d = np.asarray(land_mask)               
@@ -546,15 +570,6 @@ def plot_3d_voxel_mixingratio(name, var, mask_cases, percentile=90):
     # Add back z=0 dimension to make (x,y,z), applicable for the surface level
     filled = filled_xy.T[:, :, None]                   # (x, y, 1) boolean
     facecolors = colors_yx.T[:, :, None]               # (x, y, 1) object (color strings)
-
-    # Colors to cycle through for each field (distinct from cloud color)
-    field_colors = {
-        "GRAUPEL": "orange",
-        "SNOW": "purple",
-        "ICE": "green",
-        "HAIL": "red",
-        "WATER VAPOR": "yellow"
-    }
 
     # Convert to NumPy
     z_agl_np = to_np(ht_agl)
@@ -618,13 +633,13 @@ def plot_3d_voxel_mixingratio(name, var, mask_cases, percentile=90):
 
     # Plotting voxels
     ax.voxels(cloud_mask_vox, facecolors='lightblue', edgecolor=None, alpha=0.4, label='Cloud') 
-    ax.voxels(var_vox, facecolors=field_colors.get(name, "black"), edgecolor=None, alpha=0.6, label='Strong Updraft')
+    ax.voxels(var_vox, facecolors=field_colors.get(name, "black"), edgecolor=None, alpha=0.6, label='{name} > {var_threshold:.3f} (g/kg)')
     ax.voxels(filled, facecolors=facecolors, alpha=0.6)
 
     # Manually create legend handles
     handles = [
-    Patch(color=field_colors.get(name, "black"), label=f"{name}> {var_threshold:.3f} (g/kg)"),
-    Patch(color='lightblue', label="Cloud Region"),
+    Patch(color=field_colors.get(name, "black"), label=f"{name} > {var_threshold:.3f} (g/kg)"),
+    Patch(color='lightblue', label="Cloud"),
     ]
     ax.legend(handles=handles, loc="upper right")
 
@@ -656,34 +671,46 @@ def plot_3d_voxel_mixingratio(name, var, mask_cases, percentile=90):
     ax.set_ylim(y_min-5, y_max + 5)
     ax.set_ylabel("Latitude (°)",labelpad=15)
 
-    # Z axis (real height using z_uniform)
-    z_ticks = np.arange(z_min, z_max + 1, max(1, (z_max - z_min) // 5))
-    z_labels = np.round(z_uniform[z_ticks] / 1000, 2)  # km
-    ax.set_zticks(z_ticks)
-    ax.set_zticklabels(z_labels)
-    ax.set_zlim(z_min, z_max + 5)
+    # --- Correct Z ticks: keep empty gap, label in km, position in indices ---
+    z_step_km = 0.5                              # label every 1 km (adjust as you like)
+    z_ticks_m = np.arange(0, z_max + 1, z_step_km * 1000)   # tick heights in meters
+
+    # Map real heights (m) to voxel indices (0..len(z_uniform)-1)
+    z_tick_idx = np.round(z_ticks_m / dz).astype(int)
+    z_tick_idx = z_tick_idx[z_tick_idx < len(z_uniform)]     # clip to valid indices
+
+    # Labels in km for those ticks
+    z_labels_km = np.round(z_ticks_m[:len(z_tick_idx)] / 1000, 2)
+
+    ax.set_zticks(z_tick_idx)
+    ax.set_zticklabels(z_labels_km)
+    ax.set_zlim(0, len(z_uniform) - 1)            # z-limits in INDEX space
     ax.set_zlabel("Height AGL (km)", labelpad=15)
     
     # Spacing to prevent collision of axis labels and ticks
     ax.tick_params(axis='y', pad=10)
     ax.tick_params(axis='z', pad=10)
 
+    # Viewing the band from the long axis side
+    ax.view_init(elev=10, azim=-90)
+
     # Add title
     ax.set_title("3D Cloud and Updraft Structure")
 
-    # Axes and appearance
-    ax.view_init(elev=10, azim=-90)
-    plt.show()
-
     
+    # Show the figure if requested
+    if SHOW_FIGS:
+        plt.show(block=False)
+        print("Press any key to continue...")
+        plt.waitforbuttonpress()
+        plt.close()
+    else:
+        plt.close()
 
 def plot_3d_scatter(ht_agl,mask_cases):
+
     fig = plt.figure(figsize=(10, 8))
     ax = fig.add_subplot(111, projection='3d')
-
-    # Convert WRF lat/lon to NumPy arrays
-    lats, lons = latlon_coords(max_dbz)
-    lats, lons = to_np(lats), to_np(lons)
 
     # Get indices of cloud voxels
     z_inds, y_inds, x_inds = np.where(mask_cases["cloud"])
@@ -709,9 +736,20 @@ def plot_3d_scatter(ht_agl,mask_cases):
     ax.set_zlabel("Height AGL (m)", labelpad=15)
     ax.set_title(f"3D Cloud Structure with Real Coordinates at {matched_time}")
 
-    plt.tight_layout()
-    plt.savefig(savepath + f"3Dcloudscat_ht{ht_level}T{threshold}_A{SIMULATION}D{domain}_{timestamp_str}.png")
-    plt.show() if SHOW_FIGS else plt.close()
+    # Set an identifiable filename and save the figure
+    filename = f"3Dcloudscat_ht{ht_level}T{threshold}_A{SIMULATION}D{domain}_{timestamp_str}.png"
+    plt.savefig(os.path.join(savepath, filename))
+
+    # Show the figure if requested
+    if SHOW_FIGS:
+        plt.show(block=False)
+        print("Press any key to continue...")
+        plt.waitforbuttonpress()
+        plt.close()
+    else:
+        plt.close()
+
+    
 
 
 
@@ -913,6 +951,7 @@ if __name__ == "__main__":
 
     # Get lat/lon coordinates and projection from WRF grid
     lats, lons = latlon_coords(random_var)
+    lats, lons = to_np(lats), to_np(lons)  # Convert to NumPy arrays
     cart_proj = get_cartopy(random_var)
 
     # Define limits for the WRF plots
