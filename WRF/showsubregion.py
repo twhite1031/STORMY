@@ -8,7 +8,7 @@ from datetime import datetime
 import cartopy.io.shapereader as shpreader
 from cartopy.feature import ShapelyFeature
 from shapely.geometry import Polygon
-import wrffuncs
+import STORMY
 import pandas as pd
 
 """
@@ -28,7 +28,7 @@ path = f"/data2/white/WRF_OUTPUTS/SEMINAR/{SIMULATION}_ATTEMPT/"
 # --- END USER INPUT ---
 
 # Build/Find the time data for the model runs
-time_df = wrffuncs.build_time_df(path, domain)
+time_df = STORMY.build_time_df(path, domain)
 obs_time = pd.to_datetime(wrf_date_time)
 
 # Compute absolute time difference

@@ -2,13 +2,12 @@ from netCDF4 import Dataset
 import matplotlib.pyplot as plt
 import cartopy.crs as crs
 import cartopy.feature as cfeature
-from cartopy.feature import NaturalEarthFeature
 from wrf import (to_np,interplevel, getvar, get_cartopy, cartopy_xlim, cartopy_ylim, latlon_coords)
 import STORMY
 from datetime import datetime
 from metpy.plots import ctables
 import pandas as pd
-
+import numpy as np
 """
 Plot of the simulated composite reflectivty ('mdbz') with/without wind barbs
 """
@@ -39,77 +38,57 @@ match = time_df.iloc[closest_idx]
 matched_file = match["filename"]
 matched_timeidx = match["timeidx"]
 matched_time = match["time"]
-
 print(f"Closest match: {matched_time} in file {matched_file} at time index {matched_timeidx}")
 
+# Read data from matched WRF file
 with Dataset(matched_file) as ds:
     # Get the maxiumum reflectivity and convert units
     mdbz = getvar(ds, "mdbz", timeidx=matched_timeidx)
     ua  = getvar(ds, "ua", units="kt", timeidx=matched_timeidx)
     va = getvar(ds, "va", units="kt",timeidx=matched_timeidx)
     p = getvar(ds, "pressure",timeidx=matched_timeidx)
-    u_500 = interplevel(ua, p, 900)
-    v_500 = interplevel(va, p, 900)
+    u_flat = interplevel(ua, p, 900)
+    v_flat= interplevel(va, p, 900)
 
-# Get the latitude and longitude points
+# Get the lat/lon points and projection object from WRF data
 lats, lons = latlon_coords(mdbz)
-
-# Get the cartopy mapping object
 cart_proj = get_cartopy(mdbz)
+WRF_ylim = cartopy_ylim(mdbz)
+WRF_xlim = cartopy_xlim(mdbz)
 
 # Create a figure
-fig = plt.figure(figsize=(30,15))
-# Set the GeoAxes to the projection used by WRF
+fig = plt.figure(figsize=(16,12))
 ax = plt.axes(projection=cart_proj)
 
-# Download and add the states, lakes and coastlines
-states = NaturalEarthFeature(category="cultural", scale="50m", facecolor="none", name="admin_1_states_provinces")
-ax.add_feature(states, linewidth=.1, edgecolor="black")
-ax.add_feature(cfeature.LAKES.with_scale('50m'),linewidth=1, facecolor="none",  edgecolor="black")
-ax.coastlines('50m', linewidth=1)
+# Apply cartopy features to the axis (States, lakes, etc.) using STORMY helper function 
+STORMY.add_cartopy_features(ax)
+ax.set_xlim(WRF_xlim) # Set xlim for viewing the plots
+ax.set_ylim(WRF_ylim) # Set ylim for viewing the plots
 
-levels = [10, 15, 20, 25, 30, 35, 40, 45,50,55,60]
+# Add custom formatted gridlines using STORMY function
+STORMY.format_gridlines(ax, x_inline=False, y_inline=False, xpadding=20, ypadding=20) # Format gridlines
 
-nwscmap = ctables.registry.get_colortable('NWSReflectivity')
+# Plot the maximum reflectivity for the WRF run
+dbz_levels = np.arange(0, 75, 5)  # Define reflectivity levels for contouring
+mdbz_contourf = ax.contourf(to_np(lons), to_np(lats), mdbz,levels=dbz_levels,cmap="NWSRef", transform=crs.PlateCarree())
 
-# Make the filled countours with specified levels and range
-qcs = plt.contourf(to_np(lons), to_np(lats),mdbz,levels=levels,transform=crs.PlateCarree(),cmap=nwscmap)
-
+# Add the wind barbs at set pressure level (hPa), only plotting every nth data point.
+n = 25
+if windbarbs == True:
+	plt.barbs(to_np(lons[::n,::n]), to_np(lats[::n,::n]),
+          to_np(u_flat[::n, ::n]), to_np(v_flat[::n, ::n]),
+          transform=crs.PlateCarree(), length=6)
+      
 # Add a color bar
 cbar = plt.colorbar()
 cbar.set_label("dBZ",fontsize=10)
 
-# Set the map bounds
-ax.set_xlim(cartopy_xlim(mdbz))
-ax.set_ylim(cartopy_ylim(mdbz))
+# Set titles, get readable format from WRF time
+plt.title(f"Simulated Composite Reflectivty (dBZ) at {matched_time}",fontsize="18",fontweight="bold")
 
-# Add the gridlines
-gl = ax.gridlines(color="black", linestyle="dotted",draw_labels=True, x_inline=False, y_inline=False)
-gl.xlabel_style = {'rotation': 'horizontal','size': 14,'ha':'center'} # Change 14 to your desired font size
-gl.ylabel_style = {'size': 14}  # Change 14 to your desired font size
-gl.xlines = True
-gl.ylines = True
-
-gl.top_labels = False  # Disable top labels
-gl.right_labels = False  # Disable right labels
-gl.xpadding = 20
-
-
-# Add the 500 hPa wind barbs, only plotting every 125th data point.
-if windbarbs == True:
-	plt.barbs(to_np(lons[::25,::25]), to_np(lats[::25,::25]),
-          to_np(u_500[::25, ::25]), to_np(v_500[::25, ::25]),
-          transform=crs.PlateCarree(), length=6)
-
-#Adjust format for date to use in figure
-date_format = wrf_date_time.strftime("%Y-%m-%d %H:%M:%S")
-plt.title(f"Simulated Composite Reflectivty (dBZ) at {date_format}",fontsize="14")
-
-# Filename friendly (No colons or spaces)
+# Format the time for a filename (no spaces/colons), show and save figure
 time_str = matched_time.strftime("%Y-%m-%d_%H-%M-%S")
-# Use in filename
-filename = f"4castLES_{time_str}.png"
+filename = f"MDBZ_{time_str}.png"
 
 plt.savefig(savepath+filename)
-
 plt.show()

@@ -1,8 +1,7 @@
 import sys
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QPushButton, QLabel,
-    QFileDialog, QCheckBox, QMessageBox
-)
+    QFileDialog, QCheckBox, QMessageBox)
 import matplotlib.pyplot as plt
 from wrf import (to_np,interplevel, getvar, get_cartopy, cartopy_xlim, cartopy_ylim, latlon_coords)
 from netCDF4 import Dataset

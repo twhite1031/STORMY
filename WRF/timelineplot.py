@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from netCDF4 import Dataset
 from datetime import datetime
-import wrffuncs # Personal library
+import STORMY # Personal library
 from wrf import (to_np, getvar)
 from datetime import datetime
 
@@ -24,8 +24,8 @@ savepath = r"C:\Users\thoma\Documents\WRF_OUTPUTS"
 # --- END USER INPUT ---
 
 # Build/Find the time data for the model runs
-time_df_N = wrffuncs.build_time_df(path_N, domain)
-time_df_F = wrffuncs.build_time_df(path_F, domain)
+time_df_N = STORMY.build_time_df(path_N, domain)
+time_df_F = STORMY.build_time_df(path_F, domain)
 
 # Filter time range
 mask_N = (time_df_N["time"] >= start_time) & (time_df_N["time"] <= end_time)

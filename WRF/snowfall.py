@@ -11,7 +11,7 @@ from metpy.plots import USCOUNTIES
 from datetime import datetime
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 import matplotlib.ticker as mticker
-import wrffuncs
+import STORMY
 import string
 import pandas as pd
 
@@ -30,8 +30,8 @@ path_F = r"C:\Users\thoma\Documents\WRF_OUTPUTS"
 # --- END USER INPUT ---
 
 # Build/Find the time data for the model runs
-time_df_N = wrffuncs.build_time_df(path_N, domain)
-time_df_F = wrffuncs.build_time_df(path_F, domain)
+time_df_N = STORMY.build_time_df(path_N, domain)
+time_df_F = STORMY.build_time_df(path_F, domain)
 
 # Filter time range
 obs_time = pd.to_datetime(wrf_date_time)
@@ -160,7 +160,7 @@ def generate_frame(args):
             ax.text(0.01, 0.98, f"{labels[i]})", transform=ax.transAxes,fontsize=18, fontweight='bold', va='top', ha='left')
 
     # Set titles, get readable format from WRF time
-        time_object_adjusted = wrffuncs.parse_filename_datetime_wrf(file_path_N, timeidx)
+        time_object_adjusted = STORMY.parse_filename_datetime_wrf(file_path_N, timeidx)
         ax_N.set_title(f"Normal Simulation Total Snow Water Equivalent (mm)",fontsize=22,fontweight='bold')
         ax_F.set_title(f"Flat Simulation Total Snow Water Equivalent (mm)",fontsize=22,fontweight='bold')
               

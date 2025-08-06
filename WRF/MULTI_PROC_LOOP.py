@@ -10,7 +10,7 @@ from netCDF4 import Dataset
 from metpy.plots import USCOUNTIES, ctables
 from PIL import Image
 from datetime import datetime
-import wrffuncs
+import STORMY
 
 """
 A foundation for using a multi processor loop to speed up processing data
@@ -26,36 +26,34 @@ savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}
 
 # --- END USER INPUT ---
 
-
 # Build/Find the time data for the model runs
-time_df = wrffuncs.build_time_df(path, domain)
+time_df = STORMY.build_time_df(path, domain)
 
 # Filter time range
 mask = (time_df["time"] >= start_time) & (time_df["time"] <= end_time)
-
 time_df = time_df[mask].reset_index(drop=True)
 
 filelist = time_df["filename"].tolist()
 timeidxlist = time_df["timeidx"].tolist()
+timelist = time_df["time"].tolist()
 
 # ---- Function to Loop (Each Frame) ----
 
 def generate_frame(args):
-
     print("Starting generate frame")
     file_path, timeidx = args    
-
     try:
    
     # Read data from file
-        wrfin = Dataset(file_path) 
-        data = getvar(wrfin, "mdbz", timeidx=timeidx)
-        pos = getvar(wrfin,"FLSHP", timeidx=timeidx,meta=False)
-        neg = getvar(wrfin, "FLSHN", timeidx=timeidx,meta=False)
-        posic = getvar(wrfin, "FLSHFEDICP", timeidx=timeidx,meta=False)
-        negic = getvar(wrfin, "FLSHFEDICN", timeidx=timeidx,meta=False)
-        poscg = getvar(wrfin, "FLSHFEDCGP", timeidx=timeidx,meta=False)
-        negcg = getvar(wrfin, "FLSHFEDCGN", timeidx=timeidx,meta=False)
+        with Dataset(file_path) as ds:
+        
+            data = getvar(ds, "mdbz", timeidx=timeidx)
+            pos = getvar(ds,"FLSHP", timeidx=timeidx,meta=False)
+            neg = getvar(ds, "FLSHN", timeidx=timeidx,meta=False)
+            posic = getvar(ds, "FLSHFEDICP", timeidx=timeidx,meta=False)
+            negic = getvar(ds, "FLSHFEDICN", timeidx=timeidx,meta=False)
+            poscg = getvar(ds, "FLSHFEDCGP", timeidx=timeidx,meta=False)
+            negcg = getvar(ds, "FLSHFEDCGN", timeidx=timeidx,meta=False)
 
 
         if np.any(pos) > 0:
@@ -71,7 +69,7 @@ def generate_frame(args):
         if np.any(negcg) > 0:
             print("Negative CG")
 
-        return "Done"
+    
         #print("Read in WRF data")
         cart_proj = get_cartopy(data)
 
@@ -119,37 +117,25 @@ def generate_frame(args):
         cbar.ax.tick_params(labelsize=10)
         
     # Set up Titles
-        wrf_time = wrffuncs.parse_filename_datetime_wrf(file_path, timeidx)
+        wrf_time = STORMY.parse_filename_datetime_wrf(file_path, timeidx)
         ax.set_title(f"Maximum Reflectivity at " + str(wrf_time),fontsize=12,fontweight='bold')        
         #plt.suptitle(datetime_obs)
         
     # Save the figure to a file
         frame_number = os.path.splitext(os.path.basename(file_path))[0]
         filename = f'frame_{frame_number}{timeidx}.png'
-        plt.savefig(filename)
+        #plt.savefig(filename)
     
         print(f"{os.path.basename(file_path)} Processed!")
-        #plt.show()
         plt.close()
 
         return filename
     except IndexError:
         print("Error processing files due to Index Error")
-        
-def create_gif(frame_filenames, output_filename):
 
-    frames = []
-    for filename in frame_filenames:
-            new_frame = Image.open(filename)
-            frames.append(new_frame)
-
-    # Save into a GIF file that loops forever
-    frames[0].save(savepath + output_filename, format='GIF', append_images=frames[1:],save_all=True,duration=75, loop=0)
-    
 if __name__ == "__main__":
     # Generate tasks
     tasks = zip(filelist, timeidxlist)
-    output_gif = f'{SIMULATION}loopD{domain}{start_time.month:02d}{start_time.day:02d}{start_time.hour:02d}{start_time.minute:02d}to{end_time.month:02d}{end_time.day:02d}{end_time.hour:02d}{end_time.minute:02d}.gif'
     print("Finished gathering tasks")
     
 
@@ -160,8 +146,9 @@ if __name__ == "__main__":
         frame_filenames = list(frame_filenames_gen)  # Convert generator to list
      
     # Create the GIF
-    filtered_list = [filename for filename in frame_filenames if filename is not None]    
-    create_gif(sorted(filtered_list), output_gif)
+    filtered_list = [filename for filename in frame_filenames if filename is not None] 
+    output_gif = f'{SIMULATION}loopD{domain}{start_time.month:02d}{start_time.day:02d}{start_time.hour:02d}{start_time.minute:02d}to{end_time.month:02d}{end_time.day:02d}{end_time.hour:02d}{end_time.minute:02d}.gif'   
+    STORMY.create_gif(savepath, sorted(filtered_list), output_gif)
 
     # Clean up the frame files
     for filename in filtered_list:

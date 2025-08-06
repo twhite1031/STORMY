@@ -1,6 +1,6 @@
 import numpy as np
 from netCDF4 import Dataset
-import wrffuncs
+import STORMY
 from datetime import datetime
 import pandas as pd
 from wrf import getvar
@@ -15,7 +15,7 @@ savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}
 # --- END USER INPUT ---
 
 # Build/Find the time data for the model runs
-time_df = wrffuncs.build_time_df(path, domain)
+time_df = STORMY.build_time_df(path, domain)
 obs_time = pd.to_datetime(wrf_date_time)
 
 # Compute absolute time difference between model times and input time

@@ -13,7 +13,7 @@ from netCDF4 import Dataset
 import numpy as np
 from datetime import datetime, timedelta
 import os 
-import wrffuncs
+import STORMY
 import radarfuncs
 import pyart
 import nexradaws
@@ -49,7 +49,7 @@ savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}
 # --- END USER INPUT ---
 
 # Build/Find the time data for the model runs
-time_df = wrffuncs.build_time_df(path, domain)
+time_df = STORMY.build_time_df(path, domain)
 obs_time = pd.to_datetime(wrf_date_time)
 
 # Compute absolute time difference
@@ -70,7 +70,7 @@ print(f"Closest match: {matched_time} in file {matched_file} at time index {matc
 # Read in Observed Flashes
 if observed_flash == True:
 
-    wrffuncs.get_LMA_flash_data(wrf_date_time,600)
+    STORMY.get_LMA_flash_data(wrf_date_time,600)
     lma_path = '/data2/white/DATA/PROJ_LEE/LMADATA/LYLOUT_{}000_0600.dat.flash.h5'.format(wrf_date_time.strftime('%y%m%d_%H%M')[:-1])
     print(f"Reading LMA data from {lma_path}")
     timeobj = datetime.strptime(lma_path.split('/')[-1], 
@@ -212,7 +212,7 @@ skew1.ax.set_xlim(-40, 20)
 skew1.ax.set_xlabel('Temperature ($^\circ$C)')
 skew1.ax.set_ylabel('Pressure (hPa)')
 
-file_date, title_date = wrffuncs.parse_wrfout_time(os.path.basename(matched_file)) # Get date of WRF file for title and file naming
+file_date, title_date = STORMY.parse_wrfout_time(os.path.basename(matched_file)) # Get date of WRF file for title and file naming
 
 timestamp_str = matched_time.strftime("%Y%m%d_%H%M%S")
 lat_str = f"{float(lat_lon[0]):.2f}".replace('.', 'p')

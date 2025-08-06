@@ -12,7 +12,7 @@ from metpy.plots import USCOUNTIES
 from PIL import Image
 from datetime import datetime
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
-import wrffuncs
+import STORMY
 
 """
 A side by side comparison of two WRF runs using plots of simulated reflectivity ('mdbz)
@@ -30,7 +30,7 @@ savepath = f""
 # --- END USER INPUT ---
 
 # Build/Find the time data for the model runs
-time_df = wrffuncs.build_time_df(path, domain)
+time_df = STORMY.build_time_df(path, domain)
 
 mask = (time_df["time"] >= start_time) & (time_df["time"] <= end_time)
 
@@ -45,7 +45,7 @@ with Dataset(filelist[0]) as ds:
             start_rain_c = getvar(ds, "RAINC",timeidx=timeidxlist[0])
 
 start_total_rain = start_rain_nc + start_rain_c
-start_time = wrffuncs.parse_filename_datetime_wrf(filelist[0],timeidxlist[0])
+start_time = STORMY.parse_filename_datetime_wrf(filelist[0],timeidxlist[0])
 
 
 
@@ -125,7 +125,7 @@ def generate_frame(args):
 
         
     # Set titles, get readable format from WRF time
-        time_object_adjusted = wrffuncs.parse_filename_datetime_wrf(file_path_N, timeidx)
+        time_object_adjusted = STORMY.parse_filename_datetime_wrf(file_path_N, timeidx)
         ax_N.set_title(f"Rainfall starting at " + str(start_time),fontsize=18,fontweight='bold')
                      
 

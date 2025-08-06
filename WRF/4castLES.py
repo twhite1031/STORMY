@@ -7,7 +7,7 @@ from netCDF4 import Dataset
 from metpy.plots import ctables
 from wrf import (getvar, interplevel, to_np, get_cartopy, latlon_coords, cartopy_xlim, cartopy_ylim)
 from metpy.units import units
-import wrffuncs
+import STORMY
 from datetime import datetime
 import pandas as pd
 
@@ -19,7 +19,6 @@ A Three Panel Plot for forecasting Lake-effect Snow
 """
 
 # --- USER INPUT ---
-
 wrf_date_time = datetime(1997,1,12,1,52,00)
 domain = 2
 height = 850 # Pressure level for Wind Barbs
@@ -31,7 +30,7 @@ savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}
 # --- END USER INPUT ---
 
 # Build/Find the time data for the model runs
-time_df = wrffuncs.build_time_df(path, domain)
+time_df = STORMY.build_time_df(path, domain)
 obs_time = pd.to_datetime(wrf_date_time)
 
 # Compute absolute time difference between model times and input time
@@ -44,10 +43,9 @@ match = time_df.iloc[closest_idx]
 matched_file = match["filename"]
 matched_timeidx = match["timeidx"]
 matched_time = match["time"]
-
 print(f"Closest match: {matched_time} in file {matched_file} at time index {matched_timeidx}")
 
-# Open only the matched WRF file for the given time
+# Read in the data from the matched WRF file
 with Dataset(matched_file) as ds:
     z     = getvar(ds, "z", timeidx=matched_timeidx)
     mdbz  = getvar(ds, "mdbz", timeidx=matched_timeidx)
@@ -59,103 +57,71 @@ with Dataset(matched_file) as ds:
     tc    = getvar(ds, "tc", timeidx=matched_timeidx)
     t2    = getvar(ds, "T2", timeidx=matched_timeidx)
 
-# Change units to degC
+# Change temperature units to degC
 t2 = to_np(t2) * units.kelvin
 t2 = t2.to('degC')
 t2 = t2.magnitude
 
-# Interpolate temperature, height, u, and v winds to desired height level
+# Interpolate temperature, height, u, and v winds to desired height level (850 hPa)
 temp_850 = interplevel(tc, p, 850) 
-les_temp_diff = t2 - to_np(temp_850)
-
 ht = interplevel(z, p, height)
 u = interplevel(ua, p, height)
 v = interplevel(va, p, height)
 wspd = interplevel(wspd, p, height)
+les_temp_diff = t2 - to_np(temp_850)
 
-# Get the lat/lon points
+# Get the lat/lon points and projection object from WRF data
 lats, lons = latlon_coords(ht)
-
-# Get the cartopy projection object
 cart_proj = get_cartopy(ht)
+WRF_ylim = cartopy_ylim(ht)
+WRF_xlim = cartopy_xlim(ht)
 
 # Create a figure that will have 3 subplots
 fig = plt.figure(figsize=(12,9))
 ax_hgt = fig.add_subplot(1,2,1,projection=cart_proj)
 ax_dbz = fig.add_subplot(2,2,2, projection=cart_proj)
 ax_temp_diff = fig.add_subplot(2,2,4, projection=cart_proj)
+axs = [ax_hgt, ax_dbz, ax_temp_diff]
 
-# Set the margins to 0
-ax_hgt.margins(x=0,y=0,tight=True)
-ax_dbz.margins(x=0,y=0,tight=True)
-ax_temp_diff.margins(x=0,y=0,tight=True)
+# Apply cartopy features to each axis (States, lakes, etc.) using STORMY helper function 
+for ax in axs:
+    STORMY.add_cartopy_features(ax)
+    ax.margins(x=0, y=0, tight=True)
+    ax.set_xlim(WRF_xlim) # Set xlim for viewing the plots
+    ax.set_ylim(WRF_ylim) # Set ylim for viewing the plots
 
+# Create contour levels in a predetermined interval based on the data range for the color maps using STORMY helper function
+# Note: This interval is dynamic based on the data range, not ideal for comparing multiple runs
+wind_levels = STORMY.make_contour_levels(to_np(wspd), interval=5)
+hgt_levels = STORMY.make_contour_levels(to_np(ht), interval=30)
+temp_diff_levels = STORMY.make_contour_levels(les_temp_diff, interval=2)
 
-# Download and create the states, land, and oceans using cartopy features
-states = cfeature.NaturalEarthFeature(category='cultural', scale='50m',
-                                      facecolor='none',
-                                      name='admin_1_states_provinces')
+# Plot filled contour for wind speed
+c1 = ax_hgt.contourf(lons, lats, to_np(wspd), levels=wind_levels, cmap=get_cmap("rainbow"), transform=crs.PlateCarree(), zorder=2)
 
-land = cfeature.NaturalEarthFeature(category='physical', name='land',
-                                    scale='50m',
-                                    facecolor=cfeature.COLORS['land'])
-
-lakes = cfeature.NaturalEarthFeature(category='physical',name='lakes',scale='50m',facecolor="none",edgecolor="blue",zorder=5)
-
-ocean = cfeature.NaturalEarthFeature(category='physical', name='ocean',
-                                     scale='50m',
-                                     facecolor=cfeature.COLORS['water'])
-# Make the wind contours
-contour_levels = [15, 20, 25, 30, 35, 40, 50, 60, 70, 80, 90, 100, 110, 120]
-c1 = ax_hgt.contourf(lons, lats, to_np(wspd), levels=contour_levels, cmap=get_cmap("rainbow"), transform=crs.PlateCarree(), zorder=2)
-
-# Create the geopotential height contours
-contour_levels = np.arange(1320., 1620.1, 30.)
-hgt_contours = ax_hgt.contour(to_np(lons), to_np(lats), to_np(ht), contour_levels, colors="black", transform=crs.PlateCarree(), zorder=3)
-ax_hgt.clabel(hgt_contours,inline=1, fontsize=10, fmt="%i")
+# Create the geopotential height contour lines
+hgt_contours = ax_hgt.contour(to_np(lons), to_np(lats), to_np(ht), hgt_levels, colors="black", transform=crs.PlateCarree(), zorder=3)
+ax_hgt.clabel(hgt_contours,inline=1, fontsize=10, fmt="%i") # Inline labels for height contours
 
 # Create the color bar for wind speed temperature
 cbar = fig.colorbar(c1, ax=ax_hgt, orientation="horizontal", pad=.05)
 cbar.set_label('Knots',fontsize=14)
 
-
 # Add the wind barbs, only plotting every nth data point.
-ax_hgt.barbs(to_np(lons[::40,::40]), to_np(lats[::40,::40]),
-        to_np(u[::40,::40]), to_np(v[::40,::40]),
-          transform=crs.PlateCarree(), length=6,zorder=4)
+n = 40
+ax_hgt.barbs(to_np(lons[::n,::n]), to_np(lats[::n,::n]),to_np(u[::n,::n]), to_np(v[::n,::n]),transform=crs.PlateCarree(), length=6,zorder=4)
 
+# Plot the maximum reflectivty
+dbz_levels = np.arange(0, 75, 5)
+mdbz_contour = ax_dbz.contourf(to_np(lons), to_np(lats), to_np(mdbz),levels=dbz_levels,cmap="NWSRef", transform=crs.PlateCarree(),zorder=2)
 
-# Draw the oceans, land, and states
-ax_hgt.add_feature(land)
-ax_hgt.add_feature(states, linewidth=.5, edgecolor="black")
-ax_hgt.add_feature(lakes)
-ax_hgt.add_feature(ocean)
+# PLot temperature difference
+isotherm_contour = ax_temp_diff.contourf(to_np(lons), to_np(lats), les_temp_diff,levels=temp_diff_levels,cmap="jet", transform=crs.PlateCarree(),zorder=2)
 
-ax_dbz.add_feature(land)
-ax_dbz.add_feature(states, linewidth=.5, edgecolor="black")
-ax_dbz.add_feature(lakes)
-ax_dbz.add_feature(ocean)
+# Creating and formatting colorbars
+dbz_cbar = fig.colorbar(mdbz_contour, ax=ax_dbz)
+dbz_cbar.set_label("dBZ", fontsize=14)
 
-ax_temp_diff.add_feature(land)
-ax_temp_diff.add_feature(states, linewidth=.5, edgecolor="black")
-ax_temp_diff.add_feature(lakes)
-ax_temp_diff.add_feature(ocean)
-
-# Set the extent of the map to the data
-ax_temp_diff.set_xlim(cartopy_xlim(mdbz))
-ax_temp_diff.set_ylim(cartopy_ylim(mdbz))
-
-
-# Plot mdbz
-nwscmap = ctables.registry.get_colortable('NWSReflectivity')
-levels = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
-mdbz_contour = ax_dbz.contourf(to_np(lons), to_np(lats), to_np(mdbz),levels=levels,cmap=nwscmap, transform=crs.PlateCarree(),zorder=2)
-mcbar = fig.colorbar(mdbz_contour, ax=ax_dbz)
-mcbar.set_label("dBZ", fontsize=14)
-
-# PLot temp difference
-levels = [0,2,4,6,8,10,12,14,16,18,20,22]
-isotherm_contour = ax_temp_diff.contourf(to_np(lons), to_np(lats), les_temp_diff,levels=levels,cmap="jet", transform=crs.PlateCarree(),zorder=2)
 lesbar = fig.colorbar(isotherm_contour, ax=ax_temp_diff)
 lesbar.set_label("degC", fontsize=14)
 
@@ -164,21 +130,14 @@ ax_hgt.set_xlabel("Longitude", fontsize=8)
 ax_dbz.set_ylabel("Lattitude", fontsize=8)
 ax_temp_diff.set_ylabel("Lattitude", fontsize=8)
 
-# Adjust format for date to use in figure
-date_format = wrf_date_time.strftime("%Y-%m-%d %H:%M:%S")
-
-# Add a shared title at the top with the time label
-fig.suptitle(date_format, fontsize=16, fontweight='bold')
-
 # Add a title to each plot
 ax_hgt.set_title("Simulated 850hPa Wind Speed and Direction (Knots)", fontsize="14")
 ax_dbz.set_title("Simulated Composite Reflectivity (dBZ)", fontsize="14")
 ax_temp_diff.set_title("Surface - 850hPa Temperature (degC)", fontsize="14")
+fig.suptitle(matched_time, fontsize=16, fontweight='bold') # Time of the model run
 
-# Format date for a filename (no spaces/colons)
+# Format date for a filename (no spaces/colons) to use in filename
 time_str = matched_time.strftime("%Y-%m-%d_%H-%M-%S")
-
-# Use in filename
 filename = f"4castLES_{time_str}.png"
 
 plt.savefig(savepath+filename)

@@ -10,7 +10,7 @@ from wrf import (getvar, to_np, get_cartopy, latlon_coords, vertcross,
 from scipy.ndimage import label,  generate_binary_structure
 from skimage.measure import regionprops
 import cartopy.feature as cfeature
-import wrffuncs
+import STORMY
 from datetime import datetime
 import pandas as pd
 from mpl_toolkits.mplot3d import Axes3D
@@ -48,7 +48,7 @@ savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}
 # --- END USER INPUT ---
 
 # Build/Find the time data for the model runs
-time_df = wrffuncs.build_time_df(path, domain)
+time_df = STORMY.build_time_df(path, domain)
 obs_time = pd.to_datetime(wrf_date_time)
 
 # Compute absolute time difference between model times and input time

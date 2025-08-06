@@ -10,7 +10,7 @@ import cartopy.crs as crs
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.colors import LogNorm
 from datetime import datetime
-import wrffuncs
+import STORMY
 
 # --- USER INPUT ---
 start_time, end_time  = datetime(2022,11,19,00,00), datetime(2022, 11, 19,20, 00)
@@ -27,9 +27,9 @@ savepath = f"/data2/white/WRF_OUTPUTS/SEMINAR/BOTH_ATTEMPT/"
 # --- END USER INPUT ---
 
 # Build/Find the time data for the model runs
-time_df_1 = wrffuncs.build_time_df(path_1, domain)
-time_df_2 = wrffuncs.build_time_df(path_2, domain)
-time_df_3 = wrffuncs.build_time_df(path_3, domain)
+time_df_1 = STORMY.build_time_df(path_1, domain)
+time_df_2 = STORMY.build_time_df(path_2, domain)
+time_df_3 = STORMY.build_time_df(path_3, domain)
 
 # Filter time range
 mask_1 = (time_df_1["time"] >= start_time) & (time_df_1["time"] <= end_time)

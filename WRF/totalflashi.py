@@ -14,7 +14,7 @@ from metpy.plots import USCOUNTIES, ctables
 from matplotlib.colors import Normalize
 from PIL import Image
 from datetime import datetime, timedelta
-import wrffuncs
+import STORMY
 import cartopy.io.shapereader as shpreader
 import pyart
 import multiprocessing as mp
@@ -34,9 +34,9 @@ savepath = f"/data2/white/WRF_OUTPUTS/SEMINAR/BOTH_ATTEMPT/"
 # --- END USER INPUT ---
 
 # Build/Find the time data for the model runs
-time_df_1 = wrffuncs.build_time_df(path_1, domain)
-time_df_2 = wrffuncs.build_time_df(path_2, domain)
-time_df_3 = wrffuncs.build_time_df(path_3, domain)
+time_df_1 = STORMY.build_time_df(path_1, domain)
+time_df_2 = STORMY.build_time_df(path_2, domain)
+time_df_3 = STORMY.build_time_df(path_3, domain)
 
 # Filter time range
 mask_1 = (time_df_1["time"] >= start_time) & (time_df_1["time"] <= end_time)

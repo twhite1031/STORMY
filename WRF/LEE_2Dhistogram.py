@@ -12,7 +12,7 @@ from collections import defaultdict
 import numpy as np
 
 # --- USER INPUT ---
-wrf_date_time  = datetime(2022,11,18,00,00)
+start_time, end_time  = datetime(2022,11,18,00,00), datetime(2022,11,19,12,00)
 domain = 2
 
 SIMULATION = 1 # If comparing runs
@@ -22,23 +22,6 @@ datapath = "/data2/white/DATA/PROJ_LEE/IOP_2/CLOUDDATA/"
 
 # --- END USER INPUT ---
 
-# !!! Not Used Right Now !!!
-# Build/Find the time data for the model runs
-time_df = STORMY.build_time_df(path, domain)
-obs_time = pd.to_datetime(wrf_date_time)
-
-# Compute absolute time difference
-closest_idx = (time_df["time"] - obs_time).abs().argmin()
-
-# Extract the matched row
-match = time_df.iloc[closest_idx]
-
-# Unpack matched file info
-matched_file = match["filename"]
-matched_timeidx = match["timeidx"]
-matched_time = match["time"]
-
-print(f"Closest match: {matched_time} in file {matched_file} at time index {matched_timeidx}")
 
 # Read the raw data CSV
 df = pd.read_csv(datapath + "cloud_var_rawdata_202211180000_202211191200.csv")

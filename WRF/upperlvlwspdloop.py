@@ -11,7 +11,7 @@ from metpy.plots import USCOUNTIES
 from PIL import Image
 from datetime import datetime
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
-import wrffuncs
+import STORMY
 
 """
 A side by side comparison of two WRF runs using plots of simulated reflectivity ('mdbz)
@@ -31,7 +31,7 @@ savepath = r"C:\Users\thoma\Documents\WRF_OUTPUTS"
 # --- END USER INPUT ---
 
 # Build/Find the time data for the model runs
-time_df = wrffuncs.build_time_df(path, domain)
+time_df = STORMY.build_time_df(path, domain)
 
 mask = (time_df["time"] >= start_time) & (time_df["time"] <= end_time)
 
@@ -129,7 +129,7 @@ def generate_frame(args):
         plt.barbs(to_np(lons[::50,::50]), to_np(lats[::50,::50]), to_np(u_500[::50, ::50]), to_np(v_500[::50, ::50]),transform=crs.PlateCarree(), length=6)
         
     # Set titles, get readable format from WRF time
-        time_object_adjusted = wrffuncs.parse_filename_datetime_wrf(file_path_N, timeidx,10)
+        time_object_adjusted = STORMY.parse_filename_datetime_wrf(file_path_N, timeidx,10)
         ax_N.set_title(f"{height}hPa Wind Speed (m/s) and Heights (dm) at " + str(time_object_adjusted),fontsize=18,fontweight='bold')
                      
 

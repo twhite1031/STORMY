@@ -7,6 +7,7 @@ import pandas as pd
 from netCDF4 import Dataset
 from wrf import extract_times
 import requests
+from PIL import Image
 
 # Adjust datetime to match filenames
 def round_to_nearest_5_minutes(dt):
@@ -289,3 +290,80 @@ def format_gridlines(ax, **kwargs):
     gl.xpadding = 20
     return gl
 
+def add_cartopy_features(ax, 
+                         add_borders=True, 
+                         add_states=True, 
+                         add_lakes=True, 
+                         add_ocean=True, 
+                         add_land=True):
+    """
+    Add common cartopy map features to an axis.
+
+    Parameters
+    ----------
+    ax : matplotlib axis with cartopy projection
+        The axis to add features to.
+    add_borders, add_states, add_lakes, add_ocean, add_land : bool
+        Control which features are added.
+    """
+    if add_borders:
+        borders = cfeature.NaturalEarthFeature(
+            'cultural', 'admin_0_countries', '50m', facecolor='none'
+        )
+        ax.add_feature(borders, edgecolor='black', linewidth=0.8, zorder=2)
+
+    if add_states:
+        states = cfeature.NaturalEarthFeature(
+            'cultural', 'admin_1_states_provinces', '50m', facecolor='none'
+        )
+        ax.add_feature(states, edgecolor='gray', linewidth=0.5, zorder=2)
+
+    if add_lakes:
+        lakes = cfeature.NaturalEarthFeature(
+            'physical', 'lakes', '50m', facecolor='none', edgecolor='blue'
+        )
+        ax.add_feature(lakes, linewidth=0.5, zorder=1)
+
+    if add_ocean:
+        ocean = cfeature.NaturalEarthFeature(
+            'physical', 'ocean', '50m', facecolor=cfeature.COLORS['water']
+        )
+        ax.add_feature(ocean, zorder=0)
+
+    if add_land:
+        land = cfeature.NaturalEarthFeature(
+            'physical', 'land', '50m', facecolor=cfeature.COLORS['land']
+        )
+        ax.add_feature(land, zorder=0)
+
+def make_contour_levels(data, interval):
+    """
+    Create contour levels for a given dataset and interval.
+    
+    Parameters
+    ----------
+    data : array-like
+        Input data array.
+    interval : float
+        Interval between contour levels.
+        
+    Returns
+    -------
+    np.ndarray
+        Array of contour levels covering the full data range.
+    """
+    data = np.asarray(data)
+    start = np.floor(np.nanmin(data) / interval) * interval
+    end   = np.ceil(np.nanmax(data) / interval) * interval
+    return np.arange(start, end + interval, interval)
+
+# Function to create a GIF from the generated frames
+def create_gif(path, frame_filenames, output_filename):
+
+    frames = []
+    for filename in frame_filenames:
+            new_frame = Image.open(filename)
+            frames.append(new_frame)
+
+    # Save into a GIF file that loops forever
+    frames[0].save(path + output_filename, format='GIF', append_images=frames[1:],save_all=True,duration=75, loop=0)

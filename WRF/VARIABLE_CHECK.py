@@ -4,7 +4,7 @@ import concurrent.futures
 from wrf import (to_np, getvar,latlon_coords)
 from netCDF4 import Dataset
 from datetime import datetime
-import wrffuncs
+import STORMY
 
 """
 A simple script to loop through a range of your files to detect
@@ -21,7 +21,7 @@ path = "/data2/white/WRF_OUTPUTS/PROJ_LEE/ELEC_IOP_2/ATTEMPT_1/" # Path to WRF o
 # --- END USER INPUT ---
 
 # Build/Find the time data for the model runs
-time_df = wrffuncs.build_time_df(path, domain)
+time_df = STORMY.build_time_df(path, domain)
 
 # Filter time range
 mask = (time_df["time"] >= start_time) & (time_df["time"] <= end_time)
