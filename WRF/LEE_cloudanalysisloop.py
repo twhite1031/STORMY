@@ -27,7 +27,7 @@ then classifying the region as a cloud band for analysis
 """
 
 # --- USER INPUT ---
-start_time, end_time  = datetime(2022,11,18,13,50), datetime(2022, 11, 18,14, 00)
+start_time, end_time  = datetime(2022,11,18,13,50), datetime(2022, 11, 18,13, 50)
 domain = 2
 
 INTERACTIVE = True # Set to False for non-interactive (auto-run) mode
@@ -43,7 +43,7 @@ aspect_ratio_thresh = 2.5 # Not currenty applied
 
 # Define thresholds for LLAP band size (in gridpoints)
 min_gridboxes = 100   # minimum connected gridboxes
-max_gridboxes = 1000 # maximum connected gridboxes
+max_gridboxes = 1015 # maximum connected gridboxes
 
 SIMULATION = 1 # If comparing runs
 path = f"/data2/white/WRF_OUTPUTS/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
@@ -435,7 +435,7 @@ def plot_3d_voxel_w(land_mask, vert_velocity, ht_agl, mask_cases):
     w_np = to_np(vert_velocity)
 
     # Define uniform vertical grid (AGL, in meters)
-    dz = 100
+    dz = 250
     z_max = np.nanmax(z_agl_np)
     z_uniform = np.arange(0, z_max + dz, dz)  # Arange vertical bins for interpolation
     nz_uniform = len(z_uniform)
@@ -535,6 +535,9 @@ def plot_3d_voxel_w(land_mask, vert_velocity, ht_agl, mask_cases):
     # Spacing to prevent collision of axis labels and ticks
     ax.tick_params(axis='y', pad=15)
     ax.tick_params(axis='z', pad=10)
+    
+    # Viewing the band from the long axis side
+    ax.view_init(elev=10, azim=-90)
 
     # Add title
     ax.set_title("3D Cloud and Updraft Structure")
@@ -543,9 +546,6 @@ def plot_3d_voxel_w(land_mask, vert_velocity, ht_agl, mask_cases):
     # Show the figure if requested
     if SHOW_FIGS:
         plt.show(block=False)
-        print("Press any key to continue...")
-        plt.waitforbuttonpress()
-        plt.close()
     else:
         plt.close()
    
@@ -560,6 +560,16 @@ def plot_3d_voxel_mixingratio(name, var, mask_cases, percentile=90):
         "HAIL": "red",
         "WATER VAPOR": "yellow"
     }
+
+    # Thresholds to use for each hydrometeor, constant for each group
+    field_thresholds = {
+        "GRAUPEL": 0.5,
+        "SNOW": 1.0,
+        "ICE": 0.02,
+        "HAIL": .001,
+        "WATER VAPOR": 2.5
+    }
+
 
     # Set the WRF land mask to numpy and boolean
     land_2d = np.asarray(land_mask)               
@@ -584,7 +594,7 @@ def plot_3d_voxel_mixingratio(name, var, mask_cases, percentile=90):
     var_np = to_np(var)
 
     # Define uniform vertical grid (AGL, in meters)
-    dz = 100
+    dz = 250
     z_max = np.nanmax(z_agl_np)
     z_uniform = np.arange(0, z_max + dz, dz)  # Arange vertical bins for interpolation
     nz_uniform = len(z_uniform)
@@ -638,13 +648,16 @@ def plot_3d_voxel_mixingratio(name, var, mask_cases, percentile=90):
 
     # Percentile computed ONLY from in-cloud values
     vals = var_interp[in_cloud & np.isfinite(var_interp)]
-    var_threshold  = np.nanpercentile(vals, percentile) # set percentile for highlighting (e.g. 90 would be Top 10%)
+    #var_threshold  = np.nanpercentile(vals, percentile) # set percentile for highlighting (e.g. 90 would be Top 10%)
+    #print(f"{percentile}th percentile cutoff:", var_threshold)
 
-    print(f"{percentile}th percentile cutoff:", var_threshold)
 
+    # Use constant thresholds
+    var_threshold = field_thresholds.get(name, 99)
+    
     # Quick histogram to verify var threshold
     plt.hist(vals, bins=50)
-    plt.axvline(var_threshold, color='red', linestyle='--', label='90th percentile')
+    plt.axvline(var_threshold, color='red', linestyle='--', label='Threshold level')
     plt.legend()
     plt.show()
 
@@ -717,7 +730,6 @@ def plot_3d_voxel_mixingratio(name, var, mask_cases, percentile=90):
     # Spacing to prevent collision of axis labels and ticks
     ax.tick_params(axis='y', pad=15)
     ax.tick_params(axis='z', pad=10)
-
     # Viewing the band from the long axis side
     ax.view_init(elev=10, azim=-90)
 
@@ -1096,10 +1108,11 @@ if __name__ == "__main__":
         #prompt_plot("Plot plan view of the cloud highlighting flash regions?", lambda: plot_plan_cloud(max_dbz, mask_cases))
         #prompt_plot("Plot simulated composite reflectivity?", lambda: plot_mdbz(max_dbz, mask_cases))
         #prompt_plot(f"Plot 3D scatter of the cloud?", lambda: plot_3d_scatter(ht_agl,mask_cases))
-        prompt_plot(f"Plot 3D voxels hightlighting updrafts? ", lambda: plot_3d_voxel_w(land_mask, vert_velocity, ht_agl, mask_cases))
+       
 
         
         if INTERACTIVE == True:
+            prompt_plot(f"Plot 3D voxels hightlighting updrafts? ", lambda: plot_3d_voxel_w(land_mask, vert_velocity, ht_agl, mask_cases))
             for name, data in mixing_ratios.items():
                 prompt_plot(f"Plot 3D Voxels highlightning {name}?", lambda: plot_3d_voxel_mixingratio(name, data, mask_cases))
         else:

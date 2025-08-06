@@ -207,8 +207,9 @@ for group, variables in data_dict.items():
         plt.pcolormesh(x_bins[:-1], mean_heights, hist_masked.T, cmap=cmap, shading='auto')
         plt.plot(mean_profile, mean_heights, color='black', label='Mean', linewidth=2)
         plt.plot(median_profile, mean_heights, color='red', linestyle='--', label='Median', linewidth=2)
-        plt.plot(mean_profile_nozero, mean_heights, color='blue', label='Mean Nozero', linewidth=2)
-        plt.plot(median_profile_nozero, mean_heights, color='yellow', linestyle='--', label='Median Nozero', linewidth=2)
+        
+        #plt.plot(mean_profile_nozero, mean_heights, color='blue', label='Mean Nozero', linewidth=2)
+        #plt.plot(median_profile_nozero, mean_heights, color='yellow', linestyle='--', label='Median Nozero', linewidth=2)
 
         plt.xlabel(f"{var} (g/kg)")
         plt.ylabel("Height AGL (m)")
