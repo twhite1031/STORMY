@@ -13,9 +13,9 @@ from matplotlib.colors import LinearSegmentedColormap
 from datetime import datetime, timedelta
 import metpy.calc
 from metpy.units import units
-
+import pandas as pd
 # --- USER INPUT ---
-wrf_date_time = datetime(1997,1,12,1,52,00)
+wrf_date_time = datetime(2022,11,18,13,50,00)
 domain = 2
 
 SIMULATION = 1 # If comparing runs

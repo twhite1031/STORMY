@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from wrf import (to_np, getvar)
 from netCDF4 import Dataset
 from datetime import datetime
-import wrffuncs
+import STORMY
 
 """
 A line plot of integrated water vapor using the mixing ratio given from
@@ -11,19 +11,19 @@ WRF output with the ideal gas law and area of each gridbox.
 """
 
 # --- USER INPUT ---
-start_time, end_time  = datetime(1997,1,10,00,2,00), datetime(1997, 1, 10,00, 18, 00)
+start_time, end_time  = datetime(2022,11,18,13,40,00), datetime(2022, 11, 18,14, 00, 00)
 domain = 2
 
 # Path to each WRF run 
-path_N = f"/data2/white/WRF_OUTPUTS/SEMINAR/NORMAL_ATTEMPT/"
-path_F = f"/data2/white/WRF_OUTPUTS/SEMINAR/FLAT_ATTEMPT/"
+path_N = f"/data2/white/WRF_OUTPUTS/PROJ_LEE/ELEC_IOP_2/ATTEMPT_1/"
+path_F = f"/data2/white/WRF_OUTPUTS/PROJ_LEE/ELEC_IOP_2/ATTEMPT_2/"
 savepath = f"/data2/white/WRF_OUTPUTS/SEMINAR/BOTH_ATTEMPT/"
 
 # --- END USER INPUT ---
 
 # Build/Find the time data for the model runs
-time_df_N = wrffuncs.build_time_df(path_N, domain)
-time_df_F = wrffuncs.build_time_df(path_F, domain)
+time_df_N = STORMY.build_time_df(path_N, domain)
+time_df_F = STORMY.build_time_df(path_F, domain)
 
 # Filter time range
 mask_N = (time_df_N["time"] >= start_time) & (time_df_N["time"] <= end_time)
@@ -40,7 +40,7 @@ timelist = time_df_N["time"].tolist()
 def generate_frame(file_path_N, file_path_F, timeidx,time):
     try:
         # Read in the lat/lon data from a WRF file to create a mask 
-        with Dataset(path_N+'wrfout_d02_1997-01-10_00:00:00') as wrfin:
+        with Dataset(file_path_N) as wrfin:
             lat = getvar(wrfin, "lat", timeidx=0, meta=False)
             lon = getvar(wrfin, "lon", timeidx=0,   meta=False)
 
@@ -183,10 +183,6 @@ if __name__ == "__main__":
 
     plt.plot(datetime_array, GRA_array_N, label="Graupel (Normal)",color='black') 
     plt.plot(datetime_array, GRA_array_F, label="Graupel (Flat)",color='black',linestyle = "--") 
-
-    plt.plot(WV_array_N[0], range(len(WV_array_N[0])), label="Normal")
-    plt.plot(WV_array_F[0], range(len(WV_array_F[0])), label="Flat", linestyle="dashed")
-    plt.plot(WV_array_F[0] - WV_array_N[0], range(len(WV_array_F[0])), label="Flat", linestyle="dashed")
 
     # Formatting
     plt.xlabel("Time",fontsize=16,fontweight='bold')

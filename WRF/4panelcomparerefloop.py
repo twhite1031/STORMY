@@ -20,7 +20,7 @@ import pyart
 import multiprocessing as mp
 
 # --- USER INPUT ---
-start_time, end_time  = datetime(2022,11,19,00,00), datetime(2022, 11, 19,20, 00)
+start_time, end_time  = datetime(2022,11,19,00,00), datetime(2022, 11, 19,00, 20)
 domain = 2
 
 # Path to each WRF run 
@@ -127,9 +127,9 @@ def generate_frame(args):
         print("Calculated composite reflectivity from radar files")
        
     # Plot the composite reflectivity for each radar
-        KBGM_obs_contour = KBGM_display.plot_ppi_map("composite_reflectivity",vmin=0,vmax=75,mask_outside=True,ax=ax_obs, colorbar_flag=False, title_flag=False, add_grid_lines=False, cmap=nwscmap)
-        KBUF_obs_contour = KBUF_display.plot_ppi_map("composite_reflectivity",vmin=0,vmax=75,mask_outside=True,ax=ax_obs, colorbar_flag=False, title_flag=False, add_grid_lines=False, cmap=nwscmap)
-        KTYX_obs_contour = KTYX_display.plot_ppi_map("composite_reflectivity",vmin=0,vmax=75,mask_outside=True,ax=ax_obs, colorbar_flag=False, title_flag=False, add_grid_lines=False, cmap=nwscmap)
+        KBGM_obs_contour = KBGM_display.plot_ppi_map("composite_reflectivity",vmin=0,vmax=75,mask_outside=True,ax=ax_obs, colorbar_flag=False, title_flag=False, add_grid_lines=False, cmap='NWSRef')
+        KBUF_obs_contour = KBUF_display.plot_ppi_map("composite_reflectivity",vmin=0,vmax=75,mask_outside=True,ax=ax_obs, colorbar_flag=False, title_flag=False, add_grid_lines=False, cmap='NWSRef')
+        KTYX_obs_contour = KTYX_display.plot_ppi_map("composite_reflectivity",vmin=0,vmax=75,mask_outside=True,ax=ax_obs, colorbar_flag=False, title_flag=False, add_grid_lines=False, cmap='NWSRef')
         print("Plotted composite reflectivity for each observed radar")
 
     # Read in cmap and map contours
@@ -141,9 +141,9 @@ def generate_frame(args):
         mdbz_a3 = np.ma.masked_outside(to_np(mdbz_a3),0,75)
 
     # Plot the composite reflectivity for each WRF attempt
-        mdbz_a1_contour = ax_a1.contourf(to_np(lons), to_np(lats), mdbz_a1,levels=levels,vmin=10,vmax=60,cmap=nwscmap, transform=crs.PlateCarree())
-        mdbz_a2_contour = ax_a2.contourf(to_np(lons), to_np(lats), mdbz_a2,levels=levels,vmin=10,vmax=60,cmap=nwscmap, transform=crs.PlateCarree())
-        mdbz_a3_contour = ax_a3.contourf(to_np(lons), to_np(lats), mdbz_a3,levels=levels,vmin=10,vmax=60,cmap=nwscmap, transform=crs.PlateCarree())
+        mdbz_a1_contour = ax_a1.contourf(to_np(lons), to_np(lats), mdbz_a1,levels=dbz_levels,vmin=10,vmax=60,cmap='NWSRef', transform=crs.PlateCarree())
+        mdbz_a2_contour = ax_a2.contourf(to_np(lons), to_np(lats), mdbz_a2,levels=dbz_levels,vmin=10,vmax=60,cmap='NWSRef', transform=crs.PlateCarree())
+        mdbz_a3_contour = ax_a3.contourf(to_np(lons), to_np(lats), mdbz_a3,levels=dbz_levels,vmin=10,vmax=60,cmap='NWSRef', transform=crs.PlateCarree())
         print("Made all contours")
         
     # Mark Henderson Harbor on each plot
@@ -156,7 +156,7 @@ def generate_frame(args):
     # Add the colorbar manually to fit the figure
         cbar_a2 = fig.add_axes([ax_a2.get_position().x1 + 0.01,ax_a2.get_position().y0,0.02,ax_a2.get_position().height])
 
-        cbar1 = fig.colorbar(mdbz_a2, cax=cbar_a2)
+        cbar1 = fig.colorbar(mdbz_a2_contour, cax=cbar_a2)
         cbar1.set_label("dBZ", fontsize=12)
         cbar1.ax.tick_params(labelsize=10)
 
@@ -166,9 +166,9 @@ def generate_frame(args):
         print("Made formatted datetime for obs")
 
     # Set the titles for each subplot
-        ax_a1.set_title(f"Attempt 1 at " + str(time_object_adjusted),fontsize=12,fontweight='bold')
-        ax_a2.set_title(f"Attempt 2 at " + str(time_object_adjusted),fontsize=12,fontweight='bold')
-        ax_a3.set_title(f"Attempt 3 at " + str(time_object_adjusted),fontsize=12,fontweight='bold')
+        ax_a1.set_title(f"Attempt 1 at {WRF_time}", fontsize=12,fontweight='bold')
+        ax_a2.set_title(f"Attempt 2 at {WRF_time}", fontsize=12,fontweight='bold')
+        ax_a3.set_title(f"Attempt 3 at {WRF_time}", fontsize=12,fontweight='bold')
         ax_obs.set_title(f"Observation at" + formatted_datetime_obs, fontsize=12,fontweight='bold')
         plt.suptitle(formatted_datetime_obs)
 
@@ -178,9 +178,10 @@ def generate_frame(args):
         plt.savefig(filename)
         print("Saving Frame")
 
-    #print(f"{os.path.basename(file_path)} Processed!")
-        if time_object_adjusted.day == 19 and time_object_adjusted.hour == 0 and time_object_adjusted.minute == 0:
+        #print(f"{os.path.basename(file_path)} Processed!")
+        if WRF_time.day == 19 and WRF_time.hour == 0 and WRF_time.minute == 0:
             plt.show()
+            
         plt.close()
 
         return filename

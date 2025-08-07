@@ -12,6 +12,7 @@ from datetime import datetime
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 import STORMY
 import string
+import numpy as np
 
 """
 A side by side comparison of two WRF runs using plots of simulated reflectivity ('mdbz)

@@ -20,12 +20,12 @@ A GIF will be made using the plots between the time periods
 """
 
 # --- USER INPUT ---
-start_time, end_time  = datetime(2023,1,9,7,40,00), datetime(2023, 1, 9,7, 55, 00)
+start_time, end_time  = datetime(2022,11,18,13,40,00), datetime(2022, 11, 18,14, 00, 00)
 domain = 2
 
 SIMULATION = 1 # If comparing runs
-path = f"/data2/white/wrf/WRFV4.5.2/run/"
-savepath = f""
+path = f"/data2/white/WRF_OUTPUTS/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
+savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
 
 # --- END USER INPUT ---
 
@@ -118,7 +118,7 @@ def generate_frame(args):
 if __name__ == "__main__":
     print("")
     # Generate tasks
-    tasks = zip(filelist, timeidxlist)
+    tasks = zip(filelist, timeidxlist, timelist)
 
 
     print("Finished gathering tasks")

@@ -68,7 +68,7 @@ cbar = plt.colorbar(ax=ax, shrink=.98)
 cbar.set_label("hPa", fontsize=10)
 
 # Add custom formatted gridlines using STORMY function
-STORMY.format_gridlines(ax.ctt, x_inline=False, y_inline=False, xpadding=20, ypadding=20) 
+STORMY.format_gridlines(ax, x_inline=False, y_inline=False, xpadding=20, ypadding=20) 
 
 # Add a title
 plt.title(f"Sea Level Pressure (hPa) at {matched_time}", fontsize="14")

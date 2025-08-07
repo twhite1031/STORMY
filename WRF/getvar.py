@@ -67,8 +67,7 @@ ax.set_xlim(WRF_xlim)
 ax.set_ylim(WRF_ylim)
 
 # Add the title
-time_object_adjusted = STORMY.parse_filename_datetime_wrf(matched_file, matched_timeidx)
-ax.set_title(f"{var} at {matched_time}"))
+ax.set_title(f"{var} at {matched_time}")
 
 # Format the time for a filename (no spaces/colons), show and save figure
 time_str = matched_time.strftime("%Y-%m-%d_%H-%M-%S")

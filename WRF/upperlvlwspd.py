@@ -73,11 +73,11 @@ ax.set_ylim(WRF_ylim) # Set ylim for viewing the plots
 # Create contour levels in a predetermined interval based on the data range for the color maps using STORMY helper function
 # Note: This interval is dynamic based on the data range, not ideal for comparing multiple runs
 hgt_levels = STORMY.make_contour_levels(to_np(ht_500), interval=6)
-wspd_levls = STORMY.make_contour_levels(to_np(wspd_500), interval=5)
+wspd_levels = STORMY.make_contour_levels(to_np(wspd_500), interval=5)
 
 # Plot the wind speed and height contours
-hgt_contours = plt.contour(to_np(lons), to_np(lats), to_np(ht_500),levels=levels, colors="black",transform=crs.PlateCarree())
-wspd_contours = plt.contourf(to_np(lons), to_np(lats), to_np(wspd_500),levels=levels,cmap=get_cmap("rainbow"), transform=crs.PlateCarree())
+hgt_contours = plt.contour(to_np(lons), to_np(lats), to_np(ht_500),levels=hgt_levels, colors="black",transform=crs.PlateCarree())
+wspd_contours = plt.contourf(to_np(lons), to_np(lats), to_np(wspd_500),levels=wspd_levels,cmap=get_cmap("rainbow"), transform=crs.PlateCarree())
 plt.clabel(hgt_contours, inline=1, fontsize=10, fmt="%i") # Inline labels for height contours
 
 # Add the 500 hPa wind barbs, only plotting every nth data point.
@@ -88,7 +88,7 @@ cbar = plt.colorbar(wspd_contours, ax=ax, orientation="horizontal", pad=.05)
 cbar.set_label('Knots',fontsize=14)
 
 # Add custom formatted gridlines using STORMY function
-STORMY.format_gridlines(ax_plan, x_inline=False, y_inline=False, xpadding=20, ypadding=20)
+STORMY.format_gridlines(ax, x_inline=False, y_inline=False, xpadding=20, ypadding=20)
 
 # Add a title
 plt.title(f"{height} MB Height (dm), Wind Speed (kt), Barbs (kt) at {matched_time}",{"fontsize" : 14})

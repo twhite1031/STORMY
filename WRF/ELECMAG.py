@@ -14,12 +14,12 @@ from metpy.plots import USCOUNTIES
 from matplotlib.colors import Normalize
 from PIL import Image
 from datetime import datetime, timedelta
+import pandas as pd
 import STORMY
 
 # --- USER INPUT ---
-wrf_date_time = datetime(1997,1,12,1,52,00)
+wrf_date_time = datetime(2022,11,18,13,52,00)
 domain = 2
-lat_lon = [(44.00, -76.75), (44.00,-75.5)] # Cross section start and end points
 
 SIMULATION = 1 # If comparing runs
 path = f"/data2/white/WRF_OUTPUTS/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
@@ -71,8 +71,8 @@ STORMY.format_gridlines(ax, x_inline=False, y_inline=False, xpadding=20, ypaddin
 
 # Create contour levels in a predetermined interval based on the data range for the color maps using STORMY helper function
 # Note: This interval is dynamic based on the data range, not ideal for comparing multiple runs
-data_levels = STORMY.make_contour_levels(data, interval=10000)
-data_contourf = plt.contourf(to_np(lons), to_np(lats),data,transform=crs.PlateCarree(), cmap="m_fire_r", levels=data_levels,vmin=0,vmax=180000)
+data_levels = STORMY.make_contour_levels(data, interval=100)
+data_contourf = plt.contourf(to_np(lons), to_np(lats),data,transform=crs.PlateCarree(), cmap="hot_r", levels=data_levels)
 
 # Add a colorbar
 cbar = plt.colorbar()

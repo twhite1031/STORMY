@@ -16,7 +16,7 @@ A three panel plot that shows a plan view of cloud top temperature with a cross 
 Two side plots show cross sectional wind speed and reflectivity
 """
 # --- USER INPUT ---
-wrf_date_time = datetime(1997,1,12,1,52,00)
+wrf_date_time = datetime(2022,11,18,13,50,00)
 domain = 2
 lat_lon = [(44.00, -76.75), (44.00,-75.5)] # Cross section start and end points
 
@@ -91,10 +91,10 @@ fig = plt.figure(figsize=(12,9))
 ax_ctt = fig.add_subplot(1,2,1,projection=cart_proj)
 ax_wspd = fig.add_subplot(2,2,2)
 ax_dbz = fig.add_subplot(2,2,4)
-axs = ["ax_ctt", "ax_wspd", "ax_dbz"]
+axs = [ax_ctt, ax_wspd, ax_dbz]
 
 # Apply cartopy features to the ctt axis (States, lakes, etc.) using STORMY helper function 
-STORMY.add_cartopy_features(ax)
+STORMY.add_cartopy_features(ax_ctt)
 
 # Set margins on all plots
 for ax in axs:
@@ -117,7 +117,7 @@ ax_ctt.set_xlim(WRF_xlim)
 ax_ctt.set_ylim(WRF_ylim)
 
 # Add custom formatted gridlines using STORMY function
-STORMY.format_gridlines(ax.ctt, x_inline=False, y_inline=False, xpadding=20, ypadding=20) # Format gridlines
+STORMY.format_gridlines(ax_ctt, x_inline=False, y_inline=False, xpadding=20, ypadding=20) # Format gridlines
 
 # Get the terrain heights along the cross section line
 ter_line = interpline(ter, wrfin=Dataset(matched_file), start_point=start_point,end_point=end_point)

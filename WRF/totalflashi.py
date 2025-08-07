@@ -20,7 +20,7 @@ import pyart
 import multiprocessing as mp
 
 # --- USER INPUT ---
-start_time, end_time  = datetime(2022,11,19,00,00), datetime(2022, 11, 19,20, 00)
+start_time, end_time  = datetime(2022,11,18,13,50), datetime(2022, 11, 18,14, 00)
 domain = 2
 
 # Area you would like the plan view to look at (Left Lon, Right Lon, Bottom Lat, Top Lat)
@@ -56,15 +56,15 @@ wrf_filelist_2 = time_df_2["filename"].tolist()
 wrf_filelist_3 = time_df_3["filename"].tolist()
 
 timeidxlist = time_df_1["timeidx"].tolist() # Assuming time indexes are the same
+timelist = time_df_1["time"].tolist()
 
-def generate_frame(file_path1,file_path2,file_path3, timeidx):
+def generate_frame(file_path1,file_path2,file_path3, timeidx,time):
     print("Starting generate frame")
         
     try:
     # Read data from WRF file
         with Dataset(file_path1) as wrfin:
             data1 = getvar(wrfin, "FLSHI", timeidx=timeidx, meta=False)
-
         with Dataset(file_path2) as wrfin:
             data2 = getvar(wrfin, "FLSHI", timeidx=timeidx, meta=False)
             
@@ -84,14 +84,14 @@ def generate_frame(file_path1,file_path2,file_path3, timeidx):
 
         global count
         global coords
-        # If we wanted to track the coords and counts of certian flashes, we can use this
-        if any(lons1[flash_data1 == 1.0]):
+        # If we wanted to track the coords and counts of certain flashes, we can use this
+        if any(lons[flash_data1 == 1.0]):
             count += 1
-            times.append(time_object_adjusted)
-            coords.append((lats1[flash_data1 == 1.0],lons1[flash_data1 == 1.0]))            
+            times.append(time)
+            coords.append((lats[flash_data1 == 1.0],lons[flash_data1 == 1.0]))            
 
-    except IndexError:
-        print("Error processing files")
+    except Exception as e:
+        print(f"Error processing files, see {e}")
             
 if __name__ == "__main__":
 
@@ -114,7 +114,7 @@ if __name__ == "__main__":
     ax = plt.axes(projection=cart_proj)
     
     # Read in detailed county lines
-    reader = shpreader.Reader('countyline_files/countyl010g.shp')
+    reader = shpreader.Reader('../COUNTY_SHAPEFILES/countyl010g.shp')
     counties = list(reader.geometries())
     COUNTIES = cfeature.ShapelyFeature(counties, crs.PlateCarree(),zorder=5)
     ax.add_feature(COUNTIES,facecolor='none', edgecolor='black',linewidth=1)
@@ -123,11 +123,13 @@ if __name__ == "__main__":
     ax.set_extent(extent)
 
     # Add custom formatted gridlines using STORMY function
-    STORMY.format_gridlines(ax.ctt, x_inline=False, y_inline=False, xpadding=20, ypadding=20) 
-    
+    STORMY.format_gridlines(ax, x_inline=False, y_inline=False, xpadding=20, ypadding=20) 
+   
+    lats = to_np(lats)
+    lons = to_np(lons)
     # Loop through each file, plotting and storing flash initation information
     for idx, file_path in enumerate(wrf_filelist_1):
-        generate_frame(wrf_filelist_1[idx], wrf_filelist_2[idx], wrf_filelist_3[idx], timeidxlist[idx])
+        generate_frame(wrf_filelist_1[idx], wrf_filelist_2[idx], wrf_filelist_3[idx], timeidxlist[idx],timelist[idx])
         
     # Add a title and show the Figure
     plt.title("Total Flash Initiation Locations",fontsize=28)

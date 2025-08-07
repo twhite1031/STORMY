@@ -25,8 +25,8 @@ domain = 2
 height = 850 # Pressure level for Wind Barbs
 
 SIMULATION = 1 # If comparing runs
-path = r"C:\Users\thoma\Documents\WRF_OUTPUTS"
-savepath = r"C:\Users\thoma\Documents\WRF_OUTPUTS"
+path = f"/data2/white/WRF_OUTPUTS/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
+savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
 
 # --- END USER INPUT ---
 
@@ -39,131 +39,87 @@ time_df = time_df[mask].reset_index(drop=True)
 
 filelist = time_df["filename"].tolist()
 timeidxlist = time_df["timeidx"].tolist()
+timelist = time_df["time"].tolist()
 
-print(filelist)
+
 # ---- Function to Loop (Each Frame) ----
 def generate_frame(args):
     print("Starting generate frame")
-    file_path_N, timeidx = args
+    file_path_N, timeidx, time = args
     try:
    
-    # Read data from file
+    # Read data from WRF file
         with Dataset(file_path_N) as ncfile:
             p = getvar(ncfile, "pressure")
             z = getvar(ncfile, "z", units="dm")
             ua = getvar(ncfile, "ua", units="kt")
             va = getvar(ncfile, "va", units="kt")
             wspd = getvar(ncfile, "uvmet_wspd_wdir", units="kts")
-            wpsd = wspd[0,:]  # type: ignore # Extract wind speed from the first element of the tuple
+            wpsd = wspd[0,:]   # Extract wind speed from the first element of the tuple
 
-        #print("Read in WRF data")
-        cart_proj = get_cartopy(p)
     # Interpolate geopotential height, u, and v winds to 500 hPa
         ht_500 = interplevel(z, p, height)
         u_500 = interplevel(ua, p, height)
         v_500 = interplevel(va, p, height)
         wspd_500 = interplevel(wspd, p, height)[0,:]
 
-    # Create a figure
-        fig = plt.figure(figsize=(30,15),facecolor='white')
-        ax_N = plt.axes(projection=crs.PlateCarree())
-        
-        #print("Created Figures")
-
-    # Get the latitude and longitude points
+    # Get the lat/lon points and projection object from WRF data
         lats, lons = latlon_coords(p)
+        cart_proj = get_cartopy(p)
+        WRF_ylim = cartopy_ylim(p)
+        WRF_xlim = cartopy_xlim(p)
 
-    # Download and add the states, lakes  and coastlines
-        states = NaturalEarthFeature(category="cultural", scale="50m", facecolor="none", name="admin_1_states_provinces")
-        ax_N.add_feature(states, linewidth=.1, edgecolor="black") # type: ignore
-        ax_N.add_feature(cfeature.LAKES.with_scale('50m'),linewidth=1, facecolor="none",  edgecolor="black")
-        ax_N.coastlines('50m', linewidth=1)
-        ax_N.add_feature(USCOUNTIES, alpha=0.1)
-        #print("Made land features")
-    # Set the map bounds
-        ax_N.set_xlim(cartopy_xlim(p))
-        ax_N.set_ylim(cartopy_ylim(p))
-        #print("Set map bounds")
-
-    # Add the gridlines
-        gl_N = ax_N.gridlines(color="black", linestyle="dotted",draw_labels=True, x_inline=False, y_inline=True)
-        gl_N.xlabel_style = {'rotation': 'horizontal','size': 10,'ha':'center'} # Change 14 to your desired font size
-        gl_N.ylabel_style = {'size': 10}  # Change 14 to your desired font size
-        gl_N.xlines = True
-        gl_N.ylines = True
-        gl_N.top_labels = False  # Disable top labels
-        gl_N.right_labels = True # Disable right labels
-        gl_N.xpadding = 20
-        #gl_N.xlocator = mticker.FixedLocator([-77.5,-76.5,-75.5])  # Set longitude gridlines every 10 degrees
-        #gl_N.ylocator = mticker.FixedLocator(np.arange(41, 47, .5))    # Set latitude gridlines every 10 degrees
-        # Format the gridline labels
-        gl_N.xformatter = LONGITUDE_FORMATTER
-        gl_N.yformatter = LATITUDE_FORMATTER
-
-        #print("Made gridlines")
-
-      # Read in cmap and map contours
-        hgt_interval = 6
-        # Snap min down and max up
-        vmin = (np.min(to_np(ht_500)) // hgt_interval) * hgt_interval
-        vmax = (np.max(to_np(ht_500)) // hgt_interval + 1) * hgt_interval
-        print(vmax)
-
-        # Create levels array
-        levels = np.arange(vmin, vmax + hgt_interval, hgt_interval)
-        contours = plt.contour(to_np(lons), to_np(lats), to_np(ht_500),levels=levels, colors="black",transform=crs.PlateCarree())
-        plt.clabel(contours, inline=1, fontsize=10, fmt="%i")
-
-        # Add the wind speed contours
-        wspd_interval = 5
-        vmin = (np.min(wspd_500) // wspd_interval) * wspd_interval
-        vmax = (np.max(wspd_500) // wspd_interval + 1) * wspd_interval
-
-        levels = np.arange(vmin, vmax + wspd_interval, wspd_interval)
-        wspd_contours = plt.contourf(to_np(lons), to_np(lats), to_np(wspd_500),levels=levels,cmap=get_cmap("rainbow"), transform=crs.PlateCarree())
-        cbar = plt.colorbar(wspd_contours, ax=ax_N, orientation="horizontal", pad=.05,shrink=0.6)
-        cbar.set_label('Knots',fontsize=14)
-
-
-        # Add the 500 hPa wind barbs, only plotting every nth data point.
-        plt.barbs(to_np(lons[::50,::50]), to_np(lats[::50,::50]), to_np(u_500[::50, ::50]), to_np(v_500[::50, ::50]),transform=crs.PlateCarree(), length=6)
+    # Create the figure
+        fig = plt.figure(figsize=(30,15),facecolor='white')
+        ax = plt.axes(projection=cart_proj)
         
-    # Set titles, get readable format from WRF time
-        time_object_adjusted = STORMY.parse_filename_datetime_wrf(file_path_N, timeidx,10)
-        ax_N.set_title(f"{height}hPa Wind Speed (m/s) and Heights (dm) at " + str(time_object_adjusted),fontsize=18,fontweight='bold')
-                     
+    # Apply cartopy features (states, lakes, etc.) using STORMY helper function
+        STORMY.add_cartopy_features(ax)
+        ax.set_xlim(WRF_xlim) # Set xlim for viewing the plots
+        ax.set_ylim(WRF_ylim) # Set ylim for viewing the plots
 
-    # Save the figure to a file
+    # Add custom formatted gridlines using STORMY function
+        STORMY.format_gridlines(ax, x_inline=False, y_inline=False, xpadding=20, ypadding=20)
+
+    # Create contour levels in a predetermined interval based on the data range for the color maps using STORMY helper function
+    # Note: This interval is dynamic based on the data range, not ideal for comparing multiple runs
+        hgt_levels = STORMY.make_contour_levels(to_np(ht_500), interval=6)
+        wspd_levels = STORMY.make_contour_levels(to_np(wspd_500), interval=5)
+
+    # Plot the wind speed and height contours
+        hgt_contours = plt.contour(to_np(lons), to_np(lats), to_np(ht_500),levels=hgt_levels, colors="black",transform=crs.PlateCarree())
+        wspd_contours = plt.contourf(to_np(lons), to_np(lats), to_np(wspd_500),levels=wspd_levels,cmap=get_cmap("rainbow"), transform=crs.PlateCarree())
+        plt.clabel(hgt_contours, inline=1, fontsize=10, fmt="%i") # Inline labels for height contours
+
+    # Add the 500 hPa wind barbs, only plotting every nth data point.
+        n = 50
+        plt.barbs(to_np(lons[::n,::n]), to_np(lats[::n,::n]),to_np(u_500[::n, ::n]), to_np(v_500[::n, ::n]),transform=crs.PlateCarree(), length=6)
+        
+    # Create the color bar for wind speed
+        cbar = plt.colorbar(wspd_contours, ax=ax, orientation="horizontal", pad=.05,shrink=0.6)
+        cbar.set_label('Knots',fontsize=14)
+    
+    # Add a title
+        ax.set_title(f"{height}hPa Wind Speed (m/s) and Heights (dm) at {time}" ,fontsize=18,fontweight='bold')
+                     
+    # Save the figure to a set filename to be used in the GIF
         frame_number = os.path.splitext(os.path.basename(file_path_N))[0]
         filename = f'frame_{frame_number}{timeidx}.png'
         
-        print("Saving Frame")
         plt.savefig(filename)
         plt.show()
-        print(f"{os.path.basename(file_path_N)} Processed!")
         plt.close()
 
+        print(f"{os.path.basename(file_path_N)} Processed!")
+
         return filename
-    except IndexError:
-        print("Error processing files")
+    except Exception as e:
+        print(f"Error processing files, see {e}")
         
-def create_gif(frame_filenames, output_filename):
-
-    frames = []
-    for filename in frame_filenames:
-            new_frame = Image.open(filename)
-            frames.append(new_frame)
-
-    # Save into a GIF file that loops forever
-    frames[0].save(savepath + output_filename, format='GIF', append_images=frames[1:],save_all=True,duration=75, loop=0)
-    
 if __name__ == "__main__":
-    # Generate tasks
-    tasks = zip(filelist, timeidxlist)
-    start_str = start_time.strftime("%Y%m%d_%H%M")
-    end_str   = end_time.strftime("%Y%m%d_%H%M")
-    output_gif = f'WSPD{height}hPa_LOOP_D{domain}{start_str}_to_{end_str}.gif'
 
+    # Generate tasks
+    tasks = zip(filelist, timeidxlist,timelist)
     print("Finished gathering tasks")
     
     # Use multiprocessing to generate frames in parallel
@@ -171,16 +127,24 @@ if __name__ == "__main__":
     #    print("Starting multiprocessing")
     #   frame_filenames_gen = executor.map(generate_frame, tasks)
     #    frame_filenames = list(frame_filenames_gen)  # Convert generator to list
+    
     frame_filenames = []
     for task in tasks:
         result = generate_frame(task)
         frame_filenames.append(result)
 
-    # Create the GIF
+    # Filter any failed filenames
     filtered_list = [filename for filename in frame_filenames if filename is not None]    
-    create_gif(sorted(filtered_list), output_gif)
+    
+    # Create an accurate GIF name
+    start_str = start_time.strftime("%Y%m%d_%H%M")
+    end_str   = end_time.strftime("%Y%m%d_%H%M")
+    output_gif = f'WSPD{height}hPa_LOOP_D{domain}{start_str}_to_{end_str}.gif'
 
-    # Clean up the frame files
+    # Create the GIF
+    STORMY.create_gif(savepath, sorted(filtered_list), output_gif)
+
+    # Clean up (Remove) the frame files that were created for the GIF
     for filename in filtered_list:
         print("Removing: ", filename)
         os.remove(filename)

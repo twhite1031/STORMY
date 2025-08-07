@@ -21,9 +21,9 @@ var = 'PBLH' #2D VARIABLE
 lat_min, lat_max = 43.1386, 44.2262
 lon_min, lon_max = -77.345, -74.468
 
-path_N = r"C:\Users\thoma\Documents\WRF_OUTPUTS" 
-path_F = r"C:\Users\thoma\Documents\WRF_OUTPUTS"
-savepath = r"C:\Users\thoma\Documents\WRF_OUTPUTS"
+path_N = f"/data2/white/WRF_OUTPUTS/PROJ_LEE/ELEC_IOP_2/ATTEMPT_1/"
+path_F = f"/data2/white/WRF_OUTPUTS/PROJ_LEE/ELEC_IOP_2/ATTEMPT_2/"
+savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/"
 
 # --- END USER INPUT ---
 

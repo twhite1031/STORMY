@@ -54,20 +54,20 @@ print(f"Closest match: {matched_time} in file {matched_file} at time index {matc
 
 # Read data from WRF file
 with Dataset(matched_file) as ds:
-    ter = getvar(ds, "ter", timeidx=timeidx)
+    ter = getvar(ds, "ter", timeidx=matched_timeidx)
 
 # Get the lat/lon points and projection object from WRF data
-lats, lons = latlon_coords(mdbz)
-cart_proj = get_cartopy(mdbz)
-WRF_ylim = cartopy_ylim(mdbz)
-WRF_xlim = cartopy_xlim(mdbz)
+lats, lons = latlon_coords(ter)
+cart_proj = get_cartopy(ter)
+WRF_ylim = cartopy_ylim(ter)
+WRF_xlim = cartopy_xlim(ter)
 
 # Create a figure
-fig = plt.figure(figsize=(30,15),facecolor='white')
+fig = plt.figure(figsize=(16,12),facecolor='white')
 ax = plt.axes(projection=cart_proj)
 
 # Read in detailed county lines
-reader = shpreader.Reader('/data2/white/PYTHON_SCRIPTS/SEMINAR/countyline_files/countyl010g.shp')
+reader = shpreader.Reader('../COUNTY_SHAPEFILES/countyl010g.shp')
 counties = list(reader.geometries())
 COUNTIES = cfeature.ShapelyFeature(counties, crs.PlateCarree(),zorder=5)
 ax.add_feature(COUNTIES,facecolor='none', edgecolor='black',linewidth=1)
@@ -77,7 +77,7 @@ ax.set_xlim(WRF_xlim)
 ax.set_ylim(WRF_ylim)
 
 # Plot the terrain filled contours
-elev_contour = ax.contourf(to_np(lons), to_np(lats), ter,levels=np.arange(0, np.max(mdbz), 50), cmap="Greys_r", transform=crs.PlateCarree())
+elev_contour = ax.contourf(to_np(lons), to_np(lats), ter,levels=np.arange(0, np.max(ter), 50), cmap="Greys_r", transform=crs.PlateCarree())
 
 # Add a colorbar
 cbar = plt.colorbar(elev_contour, ax=ax, orientation='vertical', shrink=0.7, pad=0.02)

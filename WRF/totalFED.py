@@ -87,7 +87,7 @@ fig = plt.figure(figsize=(12,9),facecolor='white')
 ax = plt.axes(projection=cart_proj)
     
 # Read in detailed county lines
-reader = shpreader.Reader('countyline_files/countyl010g.shp')
+reader = shpreader.Reader('../COUNTY_SHAPEFILES/countyl010g.shp')
 counties = list(reader.geometries())
 COUNTIES = cfeature.ShapelyFeature(counties, crs.PlateCarree(),zorder=5)
 ax.add_feature(COUNTIES,facecolor='none', edgecolor='black',linewidth=1)
@@ -96,7 +96,7 @@ ax.add_feature(COUNTIES,facecolor='none', edgecolor='black',linewidth=1)
 ax.set_extent(extent)
 
 # Add custom formatted gridlines using STORMY function
-STORMY.format_gridlines(ax.ctt, x_inline=False, y_inline=False, xpadding=20, ypadding=20) 
+STORMY.format_gridlines(ax, x_inline=False, y_inline=False, xpadding=20, ypadding=20) 
 
 # Create a custom color map where zero values are white
 colors = [(1, 1, 1), (0, 0, 1), (0, 1, 0), (1, 1, 0), (1, 0, 0)]  # White to Red

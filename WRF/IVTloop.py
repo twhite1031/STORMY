@@ -19,11 +19,11 @@ A GIF will be made using the plots between the time periods
 """
 
 # --- USER INPUT ---
-start_time, end_time  = datetime(2023,1,9,7,40,00), datetime(2023, 1, 9,7, 55, 00)
+start_time, end_time  = datetime(2022,11,19,7,40,00), datetime(2022, 11, 19,7, 55, 00)
 domain = 2
 
-# Path to each WRF run 
-path = f"/data2/white/wrf/WRFV4.5.2/run/"
+SIMULATION = 1 # If comparing runs
+path = f"/data2/white/WRF_OUTPUTS/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
 savepath = f"/data2/white/WRF_OUTPUTS/SEMINAR/BOTH_ATTEMPT/"
 
 # --- END USER INPUT ---
@@ -91,9 +91,8 @@ def generate_frame(args):
         cbar = plt.colorbar(ivt_contours, ax=ax, orientation="horizontal", pad=.075,shrink=0.6)
         cbar.set_label('IVT (kg/ms)',fontsize=14)
 
-    # Set titles, get readable format from WRF time
-        time_object_adjusted = STORMY.parse_filename_datetime_wrf(file_path_N, timeidx)
-        ax.set_title(f"Integrated Vapor Transport (IVT) at " + time,fontsize=18,fontweight='bold')
+    # Add a title
+        ax.set_title(f"Integrated Vapor Transport (IVT) at {time} ",fontsize=18,fontweight='bold')
                      
     # Save the figure to a set filename to be used in the GIF
         frame_number = os.path.splitext(os.path.basename(file_path_N))[0]
@@ -102,8 +101,8 @@ def generate_frame(args):
         plt.close()
 
         return filename
-    except ValueError:
-        print("Error processing files")
+    except Exception as e:
+        print(f"Error processing files, see {e}")
         
 if __name__ == "__main__":
 
@@ -115,8 +114,7 @@ if __name__ == "__main__":
     with concurrent.futures.ProcessPoolExecutor(max_workers=5) as executor: # Use ProcessPoolExecutor for CPU-bound tasks
         print("Starting multiprocessing")
         results = list(executor.map(generate_frame, tasks))
-        frame_filenames, max_ivts = zip(*results)
-        frame_filenames = list(frame_filenames)
+        frame_filenames = list(results)
 
 
     # Create the GIF

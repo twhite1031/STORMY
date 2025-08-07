@@ -2,7 +2,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from cartopy import crs
 from netCDF4 import Dataset
-from wrf import (getvar, to_np, get_cartopy, latlon_coords, vertcross,
+from wrf import (getvar, to_np, get_cartopy, cartopy_xlim, cartopy_ylim, latlon_coords, vertcross,
                  interpline, CoordPair)
 import cartopy.io.shapereader as shpreader
 import cartopy.feature as cfeature
@@ -104,10 +104,10 @@ WRF_xlim = cartopy_xlim(ht)
 
 fig = plt.figure(figsize=(16,8),facecolor='white')
 ax_plan = fig.add_subplot(1,2,1, projection=cart_proj)
-ax_cross = fig.add_subplot(1,2,2, projection=cart_proj)
+ax_cross = fig.add_subplot(1,2,2)
 
 # Special stuff for counties
-reader = shpreader.Reader('/data2/white/PYTHON_SCRIPTS/SEMINAR/countyline_files/countyl010g.shp')
+reader = shpreader.Reader('../COUNTY_SHAPEFILES/countyl010g.shp')
 counties = list(reader.geometries())
 COUNTIES = cfeature.ShapelyFeature(counties, crs.PlateCarree())
 
@@ -146,14 +146,14 @@ step = 5  # Adjust step to control arrow density
 xs_sub = xs[::step]
 ys_sub = ys[::step]
 zero_horizontal_sub = zero_horizontal[::step]
-w_cross_sub = to_np(w_cross)[::step]
+w_cross_sub = to_np(w_cross)
 
 # Sanity check to match the shapes
 print(f"xs: {xs.shape}, ys: {ys.shape}, w_cross: {w_cross_sub.shape}")
 
 # Create reflectivity and water vapor contours
 vapor_cross_contours = ax_cross.contourf(exs, eys,to_np(vapor_cross_filled),levels=vapor_levels, cmap="hot_r", extend="max")
-dbz_cross_contours = ax_cross.contour(xs, ys ,to_np(dbz_cross_filled),levels=dbz_levels, cmap=dbz_map, norm=dbz_norm, extend="max")
+dbz_cross_contours = ax_cross.contour(xs, ys ,to_np(dbz_cross_filled),levels=dbz_levels, cmap="NWSRef", extend="max")
 
 # Add wind barbs, indexed to limit amount
 quiv = ax_cross.quiver(xs, ys[::10], zero_horizontal[::10], (to_np(w_cross))[::10],scale=5)

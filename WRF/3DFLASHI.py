@@ -124,7 +124,7 @@ ax_cross = fig.add_subplot(1,2,2)
 dbz_levels = np.arange(5., 75., 5.)
 
 # Read county shapefiles into projection
-reader = shpreader.Reader('/data2/white/PYTHON_SCRIPTS/PROJ_LEE/countyline_files/countyl010g.shp')
+reader = shpreader.Reader('../COUNTY_SHAPEFILES/countyl010g.shp')
 counties = list(reader.geometries())
 COUNTIES = cfeature.ShapelyFeature(counties, crs.PlateCarree())
 

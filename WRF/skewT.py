@@ -48,8 +48,8 @@ with Dataset(matched_file) as ds:
     p1 = wrf.getvar(ds,"pressure",timeidx=matched_timeidx)
     T1 = wrf.getvar(ds,"tc",timeidx=matched_timeidx)
     Td1 = wrf.getvar(ds,"td",timeidx=matched_timeidx)
-    u1 = wrf.getvar(ds,"ua",timeidx=matched_timeidx)
-    v1 = wrf.getvar(ds,"va",timeidx=matched_timeidx)
+    u1 = wrf.getvar(ds,"ua",timeidx=matched_timeidx, units='kts')
+    v1 = wrf.getvar(ds,"va",timeidx=matched_timeidx, units='kts')
 
 # Get variables for desired coordinates
 p = p1[:,x_y[1],x_y[0]] * units.hPa
@@ -61,8 +61,8 @@ v = v1[:,x_y[1],x_y[0]] * units('kt')
 # Test if the gridbox is the correct coordinate
 lat1 = wrf.getvar(Dataset(matched_file),"lat",timeidx=matched_timeidx)
 lon1 = wrf.getvar(Dataset(matched_file),"lon",timeidx=matched_timeidx)
-lat = lat1[x_y[1],x_y[0]] * units.degree_north
-lon = lon1[x_y[1],x_y[0]] * units.degree_east
+lat = lat1[x_y[1],x_y[0]].values * units.degree_north
+lon = lon1[x_y[1],x_y[0]].values * units.degree_east
 
 print(f"Viewing the lattitude and longitude point of {lat}, {lon}")
 

@@ -78,8 +78,6 @@ ter_line = interpline(ter, wrfin=Dataset(matched_file), start_point=cross_start,
 # Get the lat/lon points and projection object from WRF data
 lats, lons = latlon_coords(ht)
 cart_proj = get_cartopy(ht)
-WRF_ylim = cartopy_ylim(ht)
-WRF_xlim = cartopy_xlim(ht)
 
 # Create the figure
 fig = plt.figure(figsize=(30,15))
@@ -90,7 +88,7 @@ ys = to_np(dbz_cross.coords["vertical"])
 
 # Plot the cross section plot for reflectivity
 dbz_levels = np.arange(0, 75, 5)  # Define reflectivity levels for contouring
-dbz_contours = ax_dbz.contourf(xs[0:41], ys[0:41] ,to_np(dbz_cross_filled)[0:41],levels=dbz_levels, cmap=dbz_map, norm=dbz_norm, extend="max")
+dbz_contours = ax_dbz.contourf(xs[0:41], ys[0:41] ,to_np(dbz_cross_filled)[0:41],levels=dbz_levels, cmap="NWSRef",extend="max")
 
 # Fill in the terrain
 ht_fill = ax_dbz.fill_between(xs, 0, to_np(ter_line),facecolor="saddlebrown")

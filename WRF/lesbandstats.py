@@ -9,7 +9,7 @@ import STORMY
 
 
 # --- USER INPUT ---
-start_time, end_time  = datetime(1997,1,10,00,2,00), datetime(1997, 1, 10,00, 18, 00)
+start_time, end_time  = datetime(1997,1,10,00,55,00), datetime(1997, 1, 10,1, 00, 00)
 domain = 2
 
 # Path to each WRF run (NORMAL & FLAT)
@@ -49,12 +49,9 @@ def generate_frame(args):
         with Dataset(file_path_F) as wrfin2:
             mdbz_F = getvar(wrfin2, "mdbz", timeidx=timeidx,meta=False)
 
-    # Find the closest radar file
-        time_object_adjusted = STORMY.parse_filename_datetime_wrf(file_path_N, timeidx)
-        
     # Locate radar data directory
         closest_file = STORMY.find_closest_radar_file(time, radar_data_dir,radar_prefix="KTYX")
-        
+    
     # Read in data from any WRF file to grab lat/lon 
         with Dataset(path_N+'wrfout_d02_1997-01-14_00:00:00') as wrfin:
             lon = getvar(wrfin, "lon", timeidx=0,meta=False)
@@ -145,14 +142,15 @@ def generate_frame(args):
         std_N = 10.0 * np.log10(std_N)
         std_F = 10.0 * np.log10(std_F)
         std_obs = 10.0 * np.log10(std_obs)
+        print("Standard deviation calculated")
 
     # Format the radar observation time for display
         datetime_obs = STORMY.parse_filename_datetime_obs(closest_file)
         formatted_datetime_obs = datetime_obs.strftime('%Y-%m-%d %H:%M:%S')
         
-        if time_object_adjusted.minute == 0 and time_object_adjusted.second == 0:
-            print("Attempt 1 at" + time + " - Max: " + str(round(max_N,2)) + " Mean: " + str(round(mean_N,2)) + " Median: " + str(round(median_N,2)) + " Standard Dev: " + str(round(std_N, 2)))
-            print("Attempt 2 at" + time + " - Max: " + str(round(max_F,2)) + " Mean: " + str(round(mean_F,2)) + " Median: " + str(round(median_F,2)) + " Standard Dev: " + str(round(std_F, 2)))
+        if time.minute == 0 and time.second == 0:
+            print(f"Attempt 1 at {time} - Max: " + str(round(max_N,2)) + " Mean: " + str(round(mean_N,2)) + " Median: " + str(round(median_N,2)) + " Standard Dev: " + str(round(std_N, 2)))
+            print(f"Attempt 2 at {time} - Max: " + str(round(max_F,2)) + " Mean: " + str(round(mean_F,2)) + " Median: " + str(round(median_F,2)) + " Standard Dev: " + str(round(std_F, 2)))
             print("Observation at" + formatted_datetime_obs + " - Max: " + str(round(max_obs,2)) + " Mean: " + str(round(mean_obs,2)) + " Median: " + str(round(median_obs,2)) + " Standard Dev: " + str(round(std_obs, 2)))
             print("------------------------------------------------------------")
 

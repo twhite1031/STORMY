@@ -40,7 +40,7 @@ print(f"Closest match: {matched_time} in file {matched_file} at time index {matc
 g = 9.81  # gravity (m/s^2)
 
 # Read data from WRF file
-with Dataset(matched_file) as wrf_file
+with Dataset(matched_file) as wrf_file:
     PH = getvar(wrf_file, "PH", timeidx=matched_timeidx)     # [bottom_top_stag, south_north, west_east]
     PHB = getvar(wrf_file, "PHB", timeidx=matched_timeidx) 
     HGT = getvar(wrf_file, "ter", timeidx=matched_timeidx)    # [south_north, west_east]

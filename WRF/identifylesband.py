@@ -23,9 +23,10 @@ domain = 2
 
 threshold = 0 # Threshold to identify the snow band (e.g., reflectivity > 20 dBZ)
 
+
 SIMULATION = 1 # If comparing runs
-path = r"C:\Users\thoma\Documents\WRF_OUTPUTS"
-savepath = r"C:\Users\thoma\Documents\WRF_OUTPUTS"
+path = f"/data2/white/WRF_OUTPUTS/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
+savepath = f"/data2/white/PLOTS_FIGURES/PROJ_LEE/ELEC_IOP_2/ATTEMPT_{SIMULATION}/"
 
 # --- END USER INPUT ---
 
@@ -120,14 +121,14 @@ ht_fill = ax_dbz.fill_between(xs, 0, to_np(ter_line),facecolor="saddlebrown")
 
 # Plot the filled contours of reflectivity for the cross section
 dbz_levels = np.arange(0,75,5) # Define reflectivity levels for contouring
-dbz_contours = ax_dbz.contourf(xs, ys,to_np(dbz_cross_filled),levels=dbz_levels, cmap=dbz_map, norm=dbz_norm, extend="max")
+dbz_contours = ax_dbz.contourf(xs, ys,to_np(dbz_cross_filled),levels=dbz_levels, cmap="NWSRef", extend="max")
 
 # Create contour levels in a predetermined interval based on the data range for the color maps using STORMY helper function
 # Note: This interval is dynamic based on the data range, not ideal for comparing multiple runs
 ctt_levels = STORMY.make_contour_levels(to_np(ctt), interval=10)
 
 # Plot the filled contours of cloud top temperature
-ctt_contours = ax_ctt.contourf(to_np(lons), to_np(lats), to_np(ctt), contour_levels, cmap=get_cmap("Greys"), transform=crs.PlateCarree())
+ctt_contours = ax_ctt.contourf(to_np(lons), to_np(lats), to_np(ctt), ctt_levels, cmap=get_cmap("Greys"), transform=crs.PlateCarree())
 
 # Show the cross section line on the plan view (ctt plot)
 ax_ctt.plot([start_point.lon, end_point.lon],[start_point.lat, end_point.lat], color="yellow", marker="o",transform=crs.PlateCarree())
@@ -141,13 +142,12 @@ cb_ctt = fig.colorbar(ctt_contours, ax=ax_ctt)
 cb_ctt.ax.tick_params(labelsize=8)
 cb_ctt.set_label("degC", fontsize=10)
 
-# Apply cartopy features to each axis (States, lakes, etc.) using STORMY helper function 
-for ax in axs:
-    STORMY.add_cartopy_features(ax)
-    ax.margins(x=0, y=0, tight=True)
-    ax.set_xlim(WRF_xlim) # Set xlim for viewing the plots
-    ax.set_ylim(WRF_ylim) # Set ylim for viewing the plots
-    STORMY.format_gridlines(ax, x_inline=False, y_inline=False, xpadding=20, ypadding=20) # Format 
+# Apply cartopy features to the axis (States, lakes, etc.) using STORMY helper function 
+STORMY.add_cartopy_features(ax_ctt)
+ax_ctt.margins(x=0, y=0, tight=True)
+ax_ctt.set_xlim(WRF_xlim) # Set xlim for viewing the plots
+ax_ctt.set_ylim(WRF_ylim) # Set ylim for viewing the plots
+STORMY.format_gridlines(ax_ctt, x_inline=False, y_inline=False, xpadding=20, ypadding=20) # Format 
 
 # Set the x-ticks to use latitude and longitude , set them evenly spaced
 coord_pairs = to_np(dbz_cross.coords["xy_loc"])

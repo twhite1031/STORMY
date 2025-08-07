@@ -56,10 +56,10 @@ torlat = df['Lat'].values
 torlon = df['Lon'].values
 '''
 # Get the lat/lon points and projection object from WRF data
-lats, lons = latlon_coords(ht)
-cart_proj = get_cartopy(ht)
-WRF_ylim = cartopy_ylim(ht)
-WRF_xlim = cartopy_xlim(ht)
+lats, lons = latlon_coords(cape)
+cart_proj = get_cartopy(cape)
+WRF_ylim = cartopy_ylim(cape)
+WRF_xlim = cartopy_xlim(cape)
 
 # Create a figure
 fig = plt.figure(figsize=(30,15))
@@ -72,7 +72,7 @@ STORMY.add_cartopy_features(ax)
 
 # Create contour levels in a predetermined interval based on the data range for the color maps using STORMY helper function
 # Note: This interval is dynamic based on the data range, not ideal for comparing multiple runs
-cape_levels = STORMY.create_levels(cape, interval=500)
+cape_levels = STORMY.make_contour_levels(cape[0], interval=1)
 
 # Plot the filled contours of CAPE
 cape_contour = plt.contourf(to_np(lons), to_np(lats),cape[0],levels=cape_levels,transform=crs.PlateCarree(),cmap="hot_r")
@@ -88,7 +88,7 @@ ax.set_ylim(WRF_ylim)
 #plt.scatter(to_np(torlon), to_np(torlat),transform=crs.PlateCarree())
 
 # Add custom formatted gridlines using STORMY function
-STORMY.format_gridlines(ax_plan, x_inline=False, y_inline=False, xpadding=20, ypadding=20)
+STORMY.format_gridlines(ax, x_inline=False, y_inline=False, xpadding=20, ypadding=20)
 
 # Add a title
 plt.title(f"CAPE (j/kg) at {matched_time}",{"fontsize" : 14})

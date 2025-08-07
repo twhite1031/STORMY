@@ -87,7 +87,7 @@ def generate_frame(args):
     # Apply cartopy features to the axes (States, lakes, etc.) using STORMY helper function 
         for ax in axs:
             STORMY.add_cartopy_features(ax)
-            STORMY.format_gridlines(ax.ctt, x_inline=False, y_inline=False, xpadding=20, ypadding=20) # Format gridlines
+            STORMY.format_gridlines(ax, x_inline=False, y_inline=False, xpadding=20, ypadding=20) # Format gridlines
             ax.set_xlim(WRF_xlim) # Set xlim for viewing the plots
             ax.set_ylim(WRF_ylim) # Set ylim for viewing the plots
 

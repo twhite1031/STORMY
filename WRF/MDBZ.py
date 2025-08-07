@@ -80,7 +80,7 @@ if windbarbs == True:
           transform=crs.PlateCarree(), length=6)
       
 # Add a color bar
-cbar = plt.colorbar()
+cbar = plt.colorbar(mdbz_contourf)
 cbar.set_label("dBZ",fontsize=10)
 
 # Set titles, get readable format from WRF time
