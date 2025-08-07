@@ -8,6 +8,7 @@ from netCDF4 import Dataset
 from wrf import extract_times
 import requests
 from PIL import Image
+import cartopy.feature as cfeature
 
 # Adjust datetime to match filenames
 def round_to_nearest_5_minutes(dt):
@@ -310,31 +311,31 @@ def add_cartopy_features(ax,
         borders = cfeature.NaturalEarthFeature(
             'cultural', 'admin_0_countries', '50m', facecolor='none'
         )
-        ax.add_feature(borders, edgecolor='black', linewidth=0.8, zorder=2)
+        ax.add_feature(borders, edgecolor='black', linewidth=1)
 
     if add_states:
         states = cfeature.NaturalEarthFeature(
             'cultural', 'admin_1_states_provinces', '50m', facecolor='none'
         )
-        ax.add_feature(states, edgecolor='gray', linewidth=0.5, zorder=2)
+        ax.add_feature(states, edgecolor='gray', linewidth=1)
 
     if add_lakes:
         lakes = cfeature.NaturalEarthFeature(
             'physical', 'lakes', '50m', facecolor='none', edgecolor='blue'
         )
-        ax.add_feature(lakes, linewidth=0.5, zorder=1)
+        ax.add_feature(lakes, linewidth=1)
 
     if add_ocean:
         ocean = cfeature.NaturalEarthFeature(
             'physical', 'ocean', '50m', facecolor=cfeature.COLORS['water']
         )
-        ax.add_feature(ocean, zorder=0)
+        # ax.add_feature(ocean)
 
     if add_land:
         land = cfeature.NaturalEarthFeature(
             'physical', 'land', '50m', facecolor=cfeature.COLORS['land']
         )
-        ax.add_feature(land, zorder=0)
+       #ax.add_feature(land)
 
 def make_contour_levels(data, interval):
     """
