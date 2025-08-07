@@ -211,7 +211,7 @@ if __name__ == "__main__":
     output_gif = f'4panelcomparerefloopD{domain}{start_time.month:02d}{start_time.day:02d}{start_time.hour:02d}{start_time.minute:02d}to{end_time.month:02d}{end_time.day:02d}{end_time.hour:02d}{end_time.minute:02d}.gif'
     STORMY.create_gif(savepath, sorted(filtered_list), output_gif)
 
-    # Clean up the frame files that were created for the GIF
+    # Clean up (Remove) the frame files that were created for the GIF
     for filename in filtered_list:
         print("Removing: ", filename)
         os.remove(filename)

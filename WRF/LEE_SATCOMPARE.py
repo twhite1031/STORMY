@@ -40,7 +40,6 @@ matched_time = match["time"]
 
 print(f"Closest match: {matched_time} in file {matched_file} at time index {matched_timeidx}")
 
-
 # Get the WRF variables
 with Dataset(matched_file) as ds:
     CTT = getvar(ds, "ctt", timeidx=matched_timeidx,units='k')

@@ -62,7 +62,6 @@ match = time_df.iloc[closest_idx]
 matched_file = match["filename"]
 matched_timeidx = match["timeidx"]
 matched_time = match["time"]
-
 print(f"Closest match: {matched_time} in file {matched_file} at time index {matched_timeidx}")
 
 # /// Observed and Simulated Flash Setup \\\

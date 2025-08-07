@@ -14,10 +14,14 @@ between start time and end time for two simulations
 # --- USER INPUT ---
 start_time, end_time  = datetime(2022,11,17,00,00,00), datetime(2022, 11, 22,1, 00, 00)
 domain = 2
-var = 'PBLH'
 
-# Path to each WRF run 
-path_N = r"C:\Users\thoma\Documents\WRF_OUTPUTS"
+var = 'PBLH' #2D VARIABLE
+
+# Region to average the variable within
+lat_min, lat_max = 43.1386, 44.2262
+lon_min, lon_max = -77.345, -74.468
+
+path_N = r"C:\Users\thoma\Documents\WRF_OUTPUTS" 
 path_F = r"C:\Users\thoma\Documents\WRF_OUTPUTS"
 savepath = r"C:\Users\thoma\Documents\WRF_OUTPUTS"
 
@@ -41,8 +45,9 @@ filelist_F = time_df_F["filename"].tolist()
 timeidxlist = time_df_N["timeidx"].tolist()
 timelist = time_df_N["time"].tolist()
 
-# Function to read and sum data from a file
-def read_and_average(file_path, variable_name,timeidx,mask):
+start_time, end_time = timelist[0], timelist[-1] # Adjust times based on what fit the WRF temporal resolution
+# Function to read and average the data from a file
+def read_and_average(file_path, variable_name, timeidx,mask):
     with Dataset(file_path) as wrfin:
         try:
             data = getvar(wrfin, variable_name, timeidx=timeidx, meta=False)[mask]
@@ -50,33 +55,26 @@ def read_and_average(file_path, variable_name,timeidx,mask):
         except IndexError:
             print("index exceeds dimension bounds")
             data = np.array([0])
+
         return np.mean(data)
 
 cumulative_data1 = []
 cumulative_data2 = []
 
 # Create mask to limit data to specific area
-with Dataset(path_N+'wrfout_d02_1997-01-12_00:00:00') as wrfin:
-        lat = getvar(wrfin, "lat", timeidx=0)
-        lon = getvar(wrfin, "lon", timeidx=0)
+with Dataset(filelist_N[0]) as wrfin:
+        lat = getvar(wrfin, "lat", timeidx=0,meta=False)
+        lon = getvar(wrfin, "lon", timeidx=0,meta=False)
 
-lat_min, lat_max = 43.1386, 44.2262
-lon_min, lon_max = -77.345, -74.468
-lat = to_np(lat)
-lon = to_np(lon)
 lat_mask = (lat > lat_min) & (lat < lat_max)
 lon_mask = (lon > lon_min) & (lon < lon_max)
     
-# This mask can be used an any data to ensure we are in are modified region
+# Define mask and
 region_mask = lat_mask & lon_mask
-    
-# Apply the mask to WRF data
-masked_data_a1 = np.where(region_mask, lat, np.nan)
+masked_data = np.where(region_mask, lat, np.nan) # Apply the mask to lat data, np.nan where not in region
+final_mask = ~np.isnan(masked_data) # Remove NaN values to get the final mask
 
-# Use this to remove nan's for statistical operations, can apply to all the data since they have matching domains
-final_mask = ~np.isnan(masked_data_a1)
-
-# Loop through all files and each time index to sum the data
+# Loop through all files and each time index to average the data
 for file_path1, file_path2, timeidx in zip(filelist_N, filelist_F,timeidxlist):
     cumulative_data1.append(read_and_average(file_path1, var, timeidx,final_mask))
     cumulative_data2.append(read_and_average(file_path2, var, timeidx,final_mask))
@@ -85,28 +83,26 @@ for file_path1, file_path2, timeidx in zip(filelist_N, filelist_F,timeidxlist):
 times = np.array(timelist)
 cumulative_data1 = np.array(cumulative_data1)
 cumulative_data2 = np.array(cumulative_data2)
-#print(times.shape)
-#print(cumulative_data1.shape)
 
 # Create a line plot
 fig,ax = plt.subplots(figsize=(12, 6))
 
+# Plot both timelines
 ax.plot(times[1:], cumulative_data1[1:], label='Normal Simulation', color='red')
 ax.plot(times[1:], cumulative_data2[1:], label='Flat Simulation', color='yellow')
 
+# Set labels
 ax.set_xlabel('Time', fontsize=18)
 ax.set_ylabel('Height (m)',fontsize=18)
 
+# Add a title, legend and grid
 ax.set_title('Planetary Boundary Layer Height',fontsize=24)
 ax.legend()
 ax.grid(True)
 
-# Format it for a filename (no spaces/colons)
-start_time, end_time = timelist[0], timelist[-1]
+# Format the time for a filename (no spaces/colons), show and save figure
 start_time_str, end_time_str = start_time.strftime("%Y-%m-%d_%H-%M"), end_time.strftime("%Y-%m-%d_%H-%M")
-
-# Use in filename
-filename = f"4castLES_{start_time_str}_{end_time_str}.png"
+filename = f"TIMELINEAVG_{start_time_str}_{end_time_str}.png"
 
 plt.savefig(savepath + filename)
 plt.show()

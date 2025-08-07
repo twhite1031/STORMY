@@ -39,14 +39,12 @@ match = time_df.iloc[closest_idx]
 matched_file = match["filename"]
 matched_timeidx = match["timeidx"]
 matched_time = match["time"]
-
 print(f"Closest match: {matched_time} in file {matched_file} at time index {matched_timeidx}")
 
+# Read data from WRF file
 with Dataset(matched_file) as ds:
-    # Convert desired coorindates to WRF gridbox coordinates
-    x_y = wrf.ll_to_xy(ds, lat_lon[0], lat_lon[1])
-
-    # Read skewT variables in
+    
+    x_y = wrf.ll_to_xy(ds, lat_lon[0], lat_lon[1])  # Convert desired coordinates to WRF gridbox coordinates
     p1 = wrf.getvar(ds,"pressure",timeidx=matched_timeidx)
     T1 = wrf.getvar(ds,"tc",timeidx=matched_timeidx)
     Td1 = wrf.getvar(ds,"td",timeidx=matched_timeidx)
@@ -60,7 +58,7 @@ Td = Td1[:,x_y[1],x_y[0]] * units.degC
 u = u1[:,x_y[1],x_y[0]] * units('kt')
 v = v1[:,x_y[1],x_y[0]] * units('kt')
 
-#Test if the coordinates are correct
+# Test if the gridbox is the correct coordinate
 lat1 = wrf.getvar(Dataset(matched_file),"lat",timeidx=matched_timeidx)
 lon1 = wrf.getvar(Dataset(matched_file),"lon",timeidx=matched_timeidx)
 lat = lat1[x_y[1],x_y[0]] * units.degree_north
@@ -68,14 +66,14 @@ lon = lon1[x_y[1],x_y[0]] * units.degree_east
 
 print(f"Viewing the lattitude and longitude point of {lat}, {lon}")
 
-# Example of defining your own vertical barb spacing
+# Create the skewT figure
 skew = SkewT()
 
-# Plot the data using normal plotting functions provided by MetPy
+# Plot temperature and dewpoint
 skew.plot(p, T, 'r')
 skew.plot(p, Td, 'g')
 
-# Set spacing interval--Every 50 mb from 1000 to 100 mb
+# Set spacing interval (e.g. Every 50 mb from 1000 to 100 mb)
 my_interval = np.arange(100, 1000, 50) * units('mbar')
 
 # Get indexes of values closest to defined interval
@@ -93,13 +91,12 @@ skew.ax.set_xlim(-60, 40)
 skew.ax.set_xlabel('Temperature ($^\circ$C)')
 skew.ax.set_ylabel('Pressure (hPa)')
 
-# Format it for a filename (no spaces/colons)
+# Add a title
+plt.title(f"SkewT at {matched_time}")
+
+# Format the time for a filename (no spaces/colons), show and save figure
 time_str = matched_time.strftime("%Y-%m-%d_%H-%M-%S")
-
-# Use in filename
 filename = f"skewT_{time_str}.png"
-
-plt.title(f"SkewT at {time_str}")
 
 plt.savefig(savepath+filename)
 plt.show()

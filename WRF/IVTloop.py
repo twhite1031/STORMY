@@ -124,7 +124,8 @@ if __name__ == "__main__":
     start_str, end_str = start_time.strftime("%Y%m%d_%H%M"), end_time.strftime("%Y%m%d_%H%M")
     output_gif = f'IVT_LOOP_D{domain}{start_str}_to_{end_str}.gif'
     STORMY.create_gif(savepath, sorted(filtered_list), output_gif)
-    # Clean up the frame files
+
+    # Clean up (Remove) the frame files that were created for the GIF
     for filename in filtered_list:
         print("Removing: ", filename)
         os.remove(filename)

@@ -38,24 +38,23 @@ time_df = time_df[mask].reset_index(drop=True)
 
 filelist = time_df["filename"].tolist()
 timeidxlist = time_df["timeidx"].tolist()
+timelist = time_df["time"].tolist()
 
-# Get Starting point data to substract from (Start at 0 mm)
+# Get Starting point data to substract from since RAINNC and RAINC is cumulative
 with Dataset(filelist[0]) as ds:
             start_rain_nc = getvar(ds, "RAINNC",timeidx=timeidxlist[0])
             start_rain_c = getvar(ds, "RAINC",timeidx=timeidxlist[0])
 
 start_total_rain = start_rain_nc + start_rain_c
-start_time = STORMY.parse_filename_datetime_wrf(filelist[0],timeidxlist[0])
-
-
+start_time = timelist[0]
 
 # ---- Function to Loop (Each Frame) ----
 def generate_frame(args):
     print("Starting generate frame")
-    file_path_N, timeidx = args
+    file_path_N, timeidx, time= args
     try:
    
-    # Read data from file
+    # Read data from WRF file
         with Dataset(file_path_N) as ncfile:
             rain_nc = getvar(ncfile, "RAINNC",timeidx=timeidx)
             rain_c = getvar(ncfile, "RAINC",timeidx=timeidx)
@@ -63,102 +62,64 @@ def generate_frame(args):
             ua = getvar(ncfile, "ua",timeidx=timeidx, units="m s-1")
             va = getvar(ncfile, "va",timeidx=timeidx, units="m s-1")
             wspd = getvar(ncfile, "uvmet_wspd_wdir", timeidx=timeidx,units="m s-1")[0,:]
-        #print(f"q.shape: {q.shape}")   # Should be (levels, latitudes, longitudes)
-        #print(f"ua.shape: {ua.shape}") # Should be (levels, latitudes, longitudes)
-        #print(f"va.shape: {va.shape}") # Should be (levels, latitudes, longitudes)
-        #print(f"p.shape: {p.shape}")   # Should be (levels, latitudes, longitudes)
 
-        #print("Read in WRF data")
+        print("Read in WRF data")
+
+        # Get the lat/lon points and projection object from WRF data
+        lats, lons = latlon_coords(ua)
         cart_proj = get_cartopy(ua)
-  
+        WRF_ylim = cartopy_ylim(ua)
+        WRF_xlim = cartopy_xlim(ua)
+
+
     # Create a figure
         fig = plt.figure(figsize=(30,15),facecolor='white')
-        ax_N = plt.axes(projection=cart_proj)
+        ax = plt.axes(projection=cart_proj)
 
-        #print("Created Figures")
+    # Apply cartopy features to the ctt axis (States, lakes, etc.) using STORMY helper function 
+        STORMY.add_cartopy_features(ax)
 
-    # Get the latitude and longitude points
-        lats, lons = latlon_coords(ua)
-
-    # Download and add the states, lakes  and coastlines
-        states = NaturalEarthFeature(category="cultural", scale="50m", facecolor="none", name="admin_1_states_provinces")
-        ax_N.add_feature(states, linewidth=.1, edgecolor="black")
-        ax_N.add_feature(cfeature.LAKES.with_scale('50m'),linewidth=1, facecolor="none",  edgecolor="black")
-        ax_N.coastlines('50m', linewidth=1)
-        ax_N.add_feature(USCOUNTIES, alpha=0.1)
-        #print("Made land features")
     # Set the map bounds
-        ax_N.set_xlim(cartopy_xlim(ua))
-        ax_N.set_ylim(cartopy_ylim(ua))
-        #print("Set map bounds")
+        ax.set_xlim(WRF_xlim)
+        ax.set_ylim(WRF_ylim)
 
-    # Add the gridlines
-        gl_N = ax_N.gridlines(color="black", linestyle="dotted",draw_labels=True, x_inline=False, y_inline=True)
-        gl_N.xlabel_style = {'rotation': 'horizontal','size': 10,'ha':'center'} # Change 14 to your desired font size
-        gl_N.ylabel_style = {'size': 10}  # Change 14 to your desired font size
-        gl_N.xlines = True
-        gl_N.ylines = True
-        gl_N.top_labels = False  # Disable top labels
-        gl_N.right_labels = True # Disable right labels
-        gl_N.xpadding = 20
-        #gl_N.xlocator = mticker.FixedLocator([-77.5,-76.5,-75.5])  # Set longitude gridlines every 10 degrees
-        #gl_N.ylocator = mticker.FixedLocator(np.arange(41, 47, .5))    # Set latitude gridlines every 10 degrees
-        # Format the gridline labels
-        gl_N.xformatter = LONGITUDE_FORMATTER
-        gl_N.yformatter = LATITUDE_FORMATTER
+    # Add custom formatted gridlines using STORMY function
+        STORMY.format_gridlines(ax, x_inline=False, y_inline=False, xpadding=20, ypadding=20) # Format gridlines
 
-
-        wspd_interval = .2
-        #vmin = (np.min(ivt) // wspd_interval) * wspd_interval
-        #vmax = (np.max(ivt) // wspd_interval + 1) * wspd_interval
-        vmin = 0
-        vmax = 12
-        #print(f"vmin: {vmin} , vmax: {vmax}")
-        levels = np.arange(vmin, vmax + wspd_interval, wspd_interval)
+        rain_interval = .2
+        start = 0
+        stop = 12
+        levels = np.arange(start, stop + rain_interval, rain_interval)
         
-        # Get total rain from start time, then convert to inches
+    # Get total rain from start time, then convert to inches
         total_rain = ((rain_nc + rain_c) - start_total_rain) / 25.4
-        wspd_contours = plt.contourf(to_np(lons), to_np(lats), to_np(total_rain),levels=levels,cmap=get_cmap("turbo"), transform=crs.PlateCarree())
-        
-        cbar = plt.colorbar(wspd_contours, ax=ax_N, orientation="horizontal", pad=.075,shrink=0.6)
-        cbar.set_label('Rainfall (mm)',fontsize=14)
 
+    # Plot the total_rain filled contours
+        rain_contours = plt.contourf(to_np(lons), to_np(lats), to_np(total_rain),levels=levels,cmap=get_cmap("turbo"), transform=crs.PlateCarree())
         
+    # Create a colorbar
+        cbar = plt.colorbar(rain_contours, ax=ax, orientation="horizontal", pad=.075,shrink=0.6)
+        cbar.set_label('Rainfall (in)',fontsize=14)
+
     # Set titles, get readable format from WRF time
-        time_object_adjusted = STORMY.parse_filename_datetime_wrf(file_path_N, timeidx)
-        ax_N.set_title(f"Rainfall starting at " + str(start_time),fontsize=18,fontweight='bold')
+        ax.set_title(f"Rainfall starting at {time}" ,fontsize=18,fontweight='bold')
                      
-
-    # Save the figure to a file
+    # Save the figure to a set filename to be used in the GIF
         frame_number = os.path.splitext(os.path.basename(file_path_N))[0]
         filename = f'frame_{frame_number}{timeidx}.png'
-        #print(f"Max IVT for this frame: {max_ivt}")
-        #print("Saving Frame")
+
         plt.savefig(filename)
-        #plt.show()
-        #print(f"{os.path.basename(file_path_N)} Processed!")
         plt.close()
 
         return filename
     except ValueError:
         print("Error processing files")
         
-def create_gif(frame_filenames, output_filename):
-
-    frames = []
-    for filename in frame_filenames:
-            new_frame = Image.open(filename)
-            frames.append(new_frame)
-
-    # Save into a GIF file that loops forever
-    frames[0].save(savepath + output_filename, format='GIF', append_images=frames[1:],save_all=True,duration=75, loop=0)
-    
 if __name__ == "__main__":
+    print("")
     # Generate tasks
     tasks = zip(filelist, timeidxlist)
-    start_str = start_time.strftime("%Y%m%d_%H%M")
-    end_str   = end_time.strftime("%Y%m%d_%H%M")
-    output_gif = f'rainfall_LOOP_D{domain}{start_str}_to_{end_str}.gif'
+
 
     print("Finished gathering tasks")
     
@@ -169,10 +130,17 @@ if __name__ == "__main__":
         frame_filenames = results
         frame_filenames = list(frame_filenames)
             
-    # Create the GIF
+    # Filter failed files from list
     filtered_list = [filename for filename in frame_filenames if filename is not None]  
 
-    create_gif(sorted(filtered_list), output_gif)
+    # Create readable GIF name
+    start_str = start_time.strftime("%Y%m%d%H%M")
+    end_str   = end_time.strftime("%Y%m%d%H%M")
+    output_gif = f'rainfall_LOOP_D{domain}{start_str}_to_{end_str}.gif'
+
+    # Create GIF
+    STORMY.create_gif(savepath, sorted(filtered_list), output_gif)
+
     # Clean up the frame files
     for filename in filtered_list:
         print("Removing: ", filename)

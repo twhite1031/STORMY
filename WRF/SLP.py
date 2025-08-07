@@ -37,36 +37,29 @@ match = time_df.iloc[closest_idx]
 matched_file = match["filename"]
 matched_timeidx = match["timeidx"]
 matched_time = match["time"]
-
 print(f"Closest match: {matched_time} in file {matched_file} at time index {matched_timeidx}")
 
+# Read data from WRF file
 with Dataset(matched_file) as ds:
-    # Get the sea level pressure
     slp = getvar(ds, "slp", timeidx=matched_timeidx)
 
-# Smooth the sea level pressure since it tends to be noisy near the
-# mountains
-smooth_slp = smooth2d(slp, 3, cenweight=4)
-
-# Get the latitude and longitude points
+# Get the lat/lon points and projection object from WRF data
 lats, lons = latlon_coords(slp)
-
-# Get the cartopy mapping object
 cart_proj = get_cartopy(slp)
+WRF_ylim = cartopy_ylim(slp)
+WRF_xlim = cartopy_xlim(slp)
 
 # Create a figure
 fig = plt.figure(figsize=(30,15))
-
-# Set the GeoAxes to the projection used by WRF
 ax = plt.axes(projection=cart_proj)
 
-# Download and add the states, lakes and coastlines
-states = NaturalEarthFeature(category="cultural", scale="50m", facecolor="none", name="admin_1_states_provinces")
-ax.add_feature(states, linewidth=.1, edgecolor="black")
-ax.add_feature(cfeature.LAKES.with_scale('50m'),linewidth=1, facecolor="none",  edgecolor="black")
-ax.coastlines('50m', linewidth=1)
+# Apply cartopy features to the axis (States, lakes, etc.) using STORMY helper function 
+STORMY.add_cartopy_features(ax)
+ax.set_xlim(WRF_xlim) # Set xlim for viewing the plots
+ax.set_ylim(WRF_ylim) # Set ylim for viewing the plots
 
-# Make the contour outlines and filled contours for the smoothed sea level pressure.
+# Make the contour outlines and filled contours for the smoothed sea level pressure
+smooth_slp = smooth2d(slp, 3, cenweight=4) # Smooth the sea level pressure,  noisy near the mountains
 plt.contour(to_np(lons), to_np(lats), to_np(smooth_slp), 10, colors="black", transform=crs.PlateCarree())
 plt.contourf(to_np(lons), to_np(lats), to_np(smooth_slp), 10, transform=crs.PlateCarree(),cmap=get_cmap("jet"))
 
@@ -74,23 +67,15 @@ plt.contourf(to_np(lons), to_np(lats), to_np(smooth_slp), 10, transform=crs.Plat
 cbar = plt.colorbar(ax=ax, shrink=.98)
 cbar.set_label("hPa", fontsize=10)
 
-# Set the map bounds
-ax.set_xlim(cartopy_xlim(smooth_slp))
-ax.set_ylim(cartopy_ylim(smooth_slp))
+# Add custom formatted gridlines using STORMY function
+STORMY.format_gridlines(ax.ctt, x_inline=False, y_inline=False, xpadding=20, ypadding=20) 
 
-# Add the gridlines
-ax.gridlines(color="black", linestyle="dotted")
+# Add a title
+plt.title(f"Sea Level Pressure (hPa) at {matched_time}", fontsize="14")
 
-# Adjust format for date to use in figure
-date_format = wrf_date_time.strftime("%Y-%m-%d %H:%M:%S")
-plt.title(f"Sea Level Pressure (hPa) at {date_format}", fontsize="14")
-
-# Format it for a filename (no spaces/colons)
+# Format the time for a filename (no spaces/colons), show and save figure
 time_str = matched_time.strftime("%Y-%m-%d_%H-%M-%S")
-# Use in filename
 filename = f"SLP_{time_str}.png"
 
 plt.savefig(savepath+filename)
-
-
 plt.show()

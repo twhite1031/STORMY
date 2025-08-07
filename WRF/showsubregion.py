@@ -22,6 +22,15 @@ domain = 2
 
 lat_lon = [(44.25, -76.25), (43.25,-74.25)] # Bottom left corner , Top right corner for box
 
+# Define important locations to plot
+locations = {
+    "KTYX Radar": {
+        "coords": (43.755, -75.68),
+        "color": "red",
+        "marker": "^"
+    }
+}
+
 SIMULATION = "NORMAL" # If comparing runs
 path = f"/data2/white/WRF_OUTPUTS/SEMINAR/{SIMULATION}_ATTEMPT/"
 
@@ -41,89 +50,63 @@ match = time_df.iloc[closest_idx]
 matched_file = match["filename"]
 matched_timeidx = match["timeidx"]
 matched_time = match["time"]
-
 print(f"Closest match: {matched_time} in file {matched_file} at time index {matched_timeidx}")
 
-def generate_frame(wrffile, timeidx):
-    try:
-    # Read data from file
-        #print(wrffile)
-        with Dataset(wrffile) as ds:
-            mdbz = getvar(ds, "ter", timeidx=timeidx)
+# Read data from WRF file
+with Dataset(matched_file) as ds:
+    ter = getvar(ds, "ter", timeidx=timeidx)
 
-    # Create a figure
-        fig = plt.figure(figsize=(30,15),facecolor='white')
+# Get the lat/lon points and projection object from WRF data
+lats, lons = latlon_coords(mdbz)
+cart_proj = get_cartopy(mdbz)
+WRF_ylim = cartopy_ylim(mdbz)
+WRF_xlim = cartopy_xlim(mdbz)
 
-    # Get the latitude and longitude points
-        lats, lons = latlon_coords(mdbz)
+# Create a figure
+fig = plt.figure(figsize=(30,15),facecolor='white')
+ax = plt.axes(projection=cart_proj)
 
-    # Get the cartopy mapping object
-        cart_proj = get_cartopy(mdbz)
-    
-    # Set the GeoAxes to the projection used by WRF
-        ax = plt.axes(projection=cart_proj)
-    
-    # Special stuff for counties
-        reader = shpreader.Reader('/data2/white/PYTHON_SCRIPTS/SEMINAR/countyline_files/countyl010g.shp')
-        counties = list(reader.geometries())
-        COUNTIES = cfeature.ShapelyFeature(counties, crs.PlateCarree(),zorder=5)
-        ax.add_feature(COUNTIES,facecolor='none', edgecolor='black',linewidth=1)
+# Read in detailed county lines
+reader = shpreader.Reader('/data2/white/PYTHON_SCRIPTS/SEMINAR/countyline_files/countyl010g.shp')
+counties = list(reader.geometries())
+COUNTIES = cfeature.ShapelyFeature(counties, crs.PlateCarree(),zorder=5)
+ax.add_feature(COUNTIES,facecolor='none', edgecolor='black',linewidth=1)
 
-    # Set the map bounds
-        ax.set_xlim(cartopy_xlim(mdbz))
-        ax.set_ylim(cartopy_ylim(mdbz))
-        
-        elev_contour = ax.contourf(to_np(lons), to_np(lats), mdbz,levels=np.arange(0, np.max(mdbz), 50), cmap="Greys_r", transform=crs.PlateCarree())
-        
-        # Add a colorbar
-        cbar = plt.colorbar(elev_contour, ax=ax, orientation='vertical', shrink=0.7, pad=0.02)
-        cbar.set_label("Terrain Elevation (m)", fontsize=16)
-        
-    # Add the gridlines
-        gl = ax.gridlines(color="black", linestyle="dotted",draw_labels=True, x_inline=False, y_inline=False)
-        gl.xlabel_style = {'rotation': 'horizontal','size': 22,'ha':'center'} # Change 14 to your desired font size
-        gl.ylabel_style = {'size': 22}  # Change 14 to your desired font size
-        gl.xlines = True
-        gl.ylines = True
-        gl.top_labels = False  # Disable top labels
-        gl.right_labels = False  # Disable right labels
-        gl.xpadding = 20
-    
-        lat1, lon1 = lat_lon[0][0], lat_lon[0][1]  # Bottom-left corner
-        lat2, lon2 = lat_lon[1][0], lat_lon[1][1] # Top-right corner
+# Set the map bounds
+ax.set_xlim(WRF_xlim)
+ax.set_ylim(WRF_ylim)
 
-        # Define the coordinates of the square (in order)
-        coordinates = [(lon1, lat1), (lon2, lat1), (lon2, lat2), (lon1, lat2), (lon1, lat1)]
-        polygon = Polygon(coordinates
-                )
-        
-        # Create a feature for the polygon
-        square_feature = ShapelyFeature([polygon], crs.PlateCarree(), edgecolor='red', facecolor='none',linewidth=3)
+# Plot the terrain filled contours
+elev_contour = ax.contourf(to_np(lons), to_np(lats), ter,levels=np.arange(0, np.max(mdbz), 50), cmap="Greys_r", transform=crs.PlateCarree())
 
-        # Define important locations to plot
-        locations = {
-            "KTYX Radar": {
-                "coords": (43.755, -75.68),
-                "color": "red",
-                "marker": "^"
-            }
-        }
-        
-        # Add the locations to the plot
-        for name, info in locations.items():
-           lat, lon = info["coords"]
-           ax.plot(lon, lat, marker=info["marker"], color=info["color"], markersize=10, transform=crs.PlateCarree(), zorder=10)
-           ax.text(lon + 0.05, lat + 0.05, name, fontsize=16, weight='bold', transform=crs.PlateCarree(), zorder=10,
-           bbox=dict(facecolor='white', alpha=0.7, boxstyle='round,pad=0.3'))
-                
+# Add a colorbar
+cbar = plt.colorbar(elev_contour, ax=ax, orientation='vertical', shrink=0.7, pad=0.02)
+cbar.set_label("Terrain Elevation (m)", fontsize=16)
 
-        # Add the square to the plot
-        ax.add_feature(square_feature)
-        plt.show()
+# Add custom formatted gridlines using STORMY function
+STORMY.format_gridlines(ax, x_inline=False, y_inline=False, xpadding=20, ypadding=20) # Format gridlines
 
-    except IndexError:
-        print("Error occured")
-if __name__ == "__main__":
-    generate_frame(matched_file, matched_timeidx)
+# Redefine subregion points and create a shape
+lat1, lon1 = lat_lon[0][0], lat_lon[0][1]  # Bottom-left corner
+lat2, lon2 = lat_lon[1][0], lat_lon[1][1] # Top-right corner
+
+coordinates = [(lon1, lat1), (lon2, lat1), (lon2, lat2), (lon1, lat2), (lon1, lat1)]
+polygon = Polygon(coordinates)
+
+# Create and add the shape feature 
+square_feature = ShapelyFeature([polygon], crs.PlateCarree(), edgecolor='red', facecolor='none',linewidth=3)
+ax.add_feature(square_feature)
+
+# Add the locations to the plot
+for name, info in locations.items():
+    lat, lon = info["coords"]
+    ax.plot(lon, lat, marker=info["marker"], color=info["color"], markersize=10, transform=crs.PlateCarree(), zorder=10)
+    ax.text(lon + 0.05, lat + 0.05, name, fontsize=16, weight='bold', transform=crs.PlateCarree(), zorder=10,
+    bbox=dict(facecolor='white', alpha=0.7, boxstyle='round,pad=0.3'))
+
+plt.show()
+
+
+
 
   

@@ -33,10 +33,12 @@ timeidxlist = time_df["timeidx"].tolist()
 
 # Open the NetCDF file
 def generate_frame(args):
+    print("Starting generate frame")
     try:
     # Seperate these for normal processing and place in args 
         file_path, timeidx = args
-        # Read data from file
+
+        # Read data from WRF file
         with Dataset(file_path) as wrfin:
             print(f"Starting: {os.path.basename(file_path)} | Time Index: {timeidx}", flush=True)
 
@@ -47,14 +49,13 @@ def generate_frame(args):
 
             # Get lat/lon
             lats, lons = latlon_coords(data)
-
             lat_np, lon_np = to_np(lats), to_np(lons)
 
             # Mask where dewpoint > temperature
             bad_mask = td > tc
+
             if np.any(bad_mask):
                 print(f"\n--- Dewpoint > Temperature Detected ---")
-            
                 indices = np.argwhere(bad_mask)
 
                 for idx in indices:
@@ -66,41 +67,33 @@ def generate_frame(args):
                         pres = p[k, j, i]
                         lat = lat_np[j, i]
                         lon = lon_np[j, i]
-                        # RH calculation
+
+                        # RH calculation 
                         e_t = 6.112 * np.exp((17.67 * t_val) / (t_val + 243.5))
                         e_td = 6.112 * np.exp((17.67 * td_val) / (td_val + 243.5))
                         rh = 100 * (e_td / e_t)
-                        if rh > 104.0:
+
+                        # If RH exceeds a realistic (or any) threshold
+                        if rh > 104.0: 
                             print(f"File: {os.path.basename(file_path)} | Time Index: {timeidx}")
                             print(f"RH = {rh} | [k={k}, j={j}, i={i}] | T={t_val:.2f} °C | Td={td_val:.2f} °C | "
                               f"P={pres:.1f} hPa | Lat={lat:.2f} | Lon={lon:.2f}")
 
-            else:  # if 2D
+            else:  # if data is 2D
                 j, i = idx
-
                 t_val = tc[j, i]
                 td_val = td[j, i]
                 lat = lat_np[j, i]
                 lon = lon_np[j, i]
 
                 print(f"[j={j}, i={i}] | T={t_val:.2f} °C | Td={td_val:.2f} °C | Surface Level | Lat={lat:.2f} | Lon={lon:.2f}")
-            '''
-            # Handle case where data is a dict or None
-            if isinstance(data, dict):
-                for key, val in data.items():
-                    arr = to_np(val)
-                    if arr is not None and np.any(arr > 0):
-                        print(f"Data detected for key '{key}' at: " + os.path.basename(file_path) + " Timeindex: " + str(timeidx))
-            elif data is not None:
-                arr = to_np(data)
-                if arr is not None and np.any(arr > 0):
-                    print("Data detected at: " + os.path.basename(file_path) + " Timeindex: " + str(timeidx))
-            '''
+
     except Exception as e:
         print(f"Error processing file {file_path} at time index {timeidx}: {e}")
 
 if __name__ == "__main__":
 
+    # Create the tasks
     tasks = zip(filelist, timeidxlist)
 
     # Use multiprocessing to generate frames in parallel
