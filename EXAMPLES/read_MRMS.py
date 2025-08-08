@@ -6,9 +6,11 @@ composite reflectivity in .grib2 format. We being by importing necessary package
 '''
 import cfgrib
 import pandas as pd
+import numpy as np
 from datetime import datetime
 import cartopy.crs as crs
 import matplotlib.pyplot as plt
+from matplotlib.colors import BoundaryNorm
 import STORMY
 
 '''
@@ -39,6 +41,7 @@ native data from "unknown" to "reflectivity", something a bit more meaningful
 to the user. We also run a dimension check since we can only use 2D data
 (unless we slice a specific level) for plan view plotting purposes
 '''
+
 # Open and rename for clarity
 ds = ds.rename({"unknown": "reflectivity"})
 data = ds['reflectivity']  
@@ -103,24 +106,31 @@ STORMY.add_cartopy_features(ax)
 STORMY.format_gridlines(ax, x_inline=False, y_inline=False)
 
 '''
+Before we plot the data, we must set levels and create a normalization for the cmap.
+The main reason for this is because pcolormesh does not take levels directly.
+'''
+
+levels = np.arange(0, 75, 5)  # 0 to 70 dBZ in 5 dBZ bins
+cmap = plt.get_cmap("NWSRef")  # or your defined reflectivity colormap
+norm = BoundaryNorm(boundaries=levels, ncolors=cmap.N, clip=True)
+
+'''
 Now we can plot using pcolormesh, setting our levels in the typical dBZ range for the colormap
 '''
 
-levels = np.arange(0,75,5)
-mesh = ax.pcolormesh(MRMS_lons, MRMS_lats, z,levels=levels,cmap="NWSRef",shading="auto", transform=crs.PlateCarree())
+mesh = ax.pcolormesh(MRMS_lons, MRMS_lats, z, cmap=cmap,norm=norm,shading="auto", transform=crs.PlateCarree())
 
 '''
-Nearly complete figure! We now simply add a colorbar and title. The "f" allows use to put variables in strings, such
+Nearly complete figure! We now simply add a colorbar and title. The .format allows use to put variables as string
+inside {}, such as the time we are units for the WRF run. The "f" allows use to put variables in strings, such
 as the time we are using for the WRF run.
 '''
 
-# add the colorbar
-cb = plt.colorbar(mesh, ticks=levels, orientation='horizontal', extend='both',
-                  cax=fig.add_axes([0.1325, 0.25, 0.76, 0.02]))
-
-cb.ax.tick_params(labelsize=5, labelcolor='black', width=0.5, length=1.5, direction='out', pad=1.0)
-cb.set_label(label='{}'.format("dBZ"), size=5, color='black', weight='normal')
+cb = fig.colorbar(mesh, ticks=levels, orientation='horizontal', shrink=.8,ax=ax)
+cb.set_label(label='{}'.format("dBZ"), color='black')
 cb.outline.set_linewidth(0.5)
+
+ax.set_title(f"MRMS -10C Reflectivity at {formatted_time}", fontsize=14)
 
 '''
 The figure is now complete!! Lets create a suitable filename that we can use to save the figure and
