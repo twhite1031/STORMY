@@ -129,7 +129,7 @@ lma_lon = (flash_events.lon[selection_event].values)
             
 lma_lat = (flash_events.lat[selection_event].values)
 
-print(flashes.start)
+print(flashes)
 print(flash_events)
 
 
