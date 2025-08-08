@@ -32,7 +32,7 @@ ds = cfgrib.open_dataset(MRMS_files[1])
 ds = ds.metpy.parse_cf()
  
 valid_time = pd.to_datetime(ds['valid_time'].values)
-formatted_time = valid_time.strftime("%Y-%m-%d %H:%M")  # Just to the minute
+formatted_time = valid_time.strftime("%Y-%m-%d_%H%M")  # Just to the minute
 print("Valid datetime:", formatted_time)
 
 '''

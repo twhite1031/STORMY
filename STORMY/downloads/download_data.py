@@ -807,27 +807,33 @@ def download_NWS_SOUNDING(start_time, end_time, stations, path_out=None):
         "format": "comma",
         "fields": "all",
     }
+    # Filename and full path
+    filename = f"nws_soundings_{start_time.strftime('%Y%m%d%H')}_{end_time.strftime('%Y%m%d%H')}_{'_'.join(stations)}.csv"
+    full_path = os.path.join(path_out, filename)
+    
+    # === Skip if file already exists ===
+    if os.path.exists(full_path):
+        print("Sounding data already exists.")
+        return full_path
 
+    # === Fetch from the web ===
     print(f"Requesting data from {payload['sts']} to {payload['ets']} for {stations}")
     response = requests.get(base_url, params=payload)
 
     if response.status_code != 200 or not response.text.startswith("station,valid"):
         raise RuntimeError("Failed to retrieve data. Check station codes and time format.")
 
-    # Convert response text to DataFrame
+    # === Convert response to DataFrame ===
     df = pd.read_csv(StringIO(response.text))
+
     if df.empty:
         print("No sounding data was returned for the specified time range and stations.")
         return None
 
-    if path_out:
-        # If path_out is a directory, add a default filename
-        if os.path.isdir(path_out):
-            filename = f"nws_soundings_{start_time.strftime('%Y%m%d%H')}_{end_time.strftime('%Y%m%d%H')}_{'_'.join(stations)}.csv"
-            path_out = os.path.join(path_out, filename)
-        os.makedirs(os.path.dirname(path_out), exist_ok=True)
-        df.to_csv(path_out, index=False)
-        print(f"Saved sounding data to: {path_out}")
-
-    return df
+    # === Save to CSV ===
+    os.makedirs(path_out, exist_ok=True)
+    df.to_csv(full_path, index=False)
+    print(f"Saved sounding data to: {full_path}")
+    
+    return full_path
 
