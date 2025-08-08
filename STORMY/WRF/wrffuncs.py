@@ -8,7 +8,8 @@ from netCDF4 import Dataset
 from wrf import extract_times
 import requests
 from PIL import Image
-import cartopy.feature 
+import cartopy.feature as cfeature
+
 # Adjust datetime to match filenames
 def round_to_nearest_5_minutes(dt):
     # Extract the minute value
@@ -310,7 +311,7 @@ def add_cartopy_features(ax,
     
     if add_borders:
         
-        borders = cartopy.cfeature.NaturalEarthFeature(
+        borders = cfeature.NaturalEarthFeature(
             'cultural', 'admin_0_countries', '50m', facecolor='none'
         )
         ax.add_feature(borders, edgecolor='black', linewidth=1)
