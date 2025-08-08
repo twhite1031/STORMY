@@ -478,6 +478,7 @@ def download_LMA(start, tbuffer=1800,path_out=''):
             except Exception as e:
                 print(f"Failed to download {filename}: {e}")
         else:
+            downloaded_files.append(local_path)
             print(f"{local_path} already exists.")
     print('\n')
     return downloaded_files
@@ -780,3 +781,53 @@ def download_ERA5_SINGLE(start_time, end_time, variables, area, path_out=''):
             downloaded_files.append(target_path)
 
     return downloaded_files
+
+def download_NWS_SOUNDING(start_time, end_time, stations, path_out=None):
+    """
+    Fetches NWS upper-air sounding data from the IEM RAOB API.
+
+    Parameters:
+    -------
+    - start_time (datetime): Start time (UTC)
+    - end_time (datetime): End time (UTC)
+    - stations (list): List of NWS station identifiers (e.g., ['BUF', 'ALB'])
+    - path_out (str, optional): Path to save CSV file. If None, does not save.
+
+    Returns:
+    -------
+
+    - pd.DataFrame: Sounding data for given stations and time range.
+    """
+    base_url = "https://mesonet.agron.iastate.edu/cgi-bin/request/raob.py"
+
+    payload = {
+        "sts": start_time.strftime("%Y-%m-%dT%H:%MZ"),
+        "ets": end_time.strftime("%Y-%m-%dT%H:%MZ"),
+        "station": ','.join(stations),
+        "format": "comma",
+        "fields": "all",
+    }
+
+    print(f"Requesting data from {payload['sts']} to {payload['ets']} for {stations}")
+    response = requests.get(base_url, params=payload)
+
+    if response.status_code != 200 or not response.text.startswith("station,valid"):
+        raise RuntimeError("Failed to retrieve data. Check station codes and time format.")
+
+    # Convert response text to DataFrame
+    df = pd.read_csv(StringIO(response.text))
+    if df.empty:
+        print("No sounding data was returned for the specified time range and stations.")
+        return None
+
+    if path_out:
+        # If path_out is a directory, add a default filename
+        if os.path.isdir(path_out):
+            filename = f"nws_soundings_{start_time.strftime('%Y%m%d%H')}_{end_time.strftime('%Y%m%d%H')}_{'_'.join(stations)}.csv"
+            path_out = os.path.join(path_out, filename)
+        os.makedirs(os.path.dirname(path_out), exist_ok=True)
+        df.to_csv(path_out, index=False)
+        print(f"Saved sounding data to: {path_out}")
+
+    return df
+
