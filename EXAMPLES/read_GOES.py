@@ -1,7 +1,8 @@
 '''
 The Geostationary Operational Environmental Satellites (GOES) are a
 series of satellites operated by NOAA and NASA. These satellites are equipped with
-mulitple tools to analyze the atmosphere. This tutorial will work with netCDF (.nc) files 
+mulitple methods to analyze the atmosphere (e.g. Low level Water Vapor Imagery).
+This tutorial will work with netCDF (.nc) files 
 folowing the tutorial constructed by @joaohenry23/GOES on Github (All credit goes to him). We begin
 by importing necessary packages
 '''

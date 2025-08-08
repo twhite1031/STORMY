@@ -663,8 +663,8 @@ def download_MRMS(field, start_time, end_time, path_out='mrms'):
                     unzip_filename = save_filename[:-3]
 
                     if os.path.exists(unzip_filename):
-                        print(f"{unzip_filename} already exists. Skipping.")
                         files_downloaded.append(unzip_filename)
+                        print(f"{unzip_filename} already exists. Skipping.")
                         continue
 
                     print(f"Downloading {key}")
