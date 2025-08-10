@@ -45,7 +45,7 @@ if 'validUTC' in df.columns:
     df['validUTC'] = pd.to_datetime(df['validUTC'], errors='coerce')
 
 start_time = df["validUTC"][0]
-formatted_time =  start_time.strftime("%Y-%m-%d_%H%M")
+formatted_time =  start_time.strftime("%Y%m%d_%H%M")
 
 '''
 We can now extract the necessary values to create
@@ -76,7 +76,7 @@ u = u_v[0]
 v = u_v[1]
 
 '''
-A seconday check is done to ensure the temperature and dewpoint temperatures
+A secondary check is done to ensure the temperature and dewpoint temperatures
 match when plotting, otherwise the plot will throw an error.
 '''
 sounding_valid = df[df["tmpc"].notna() & df["dwpc"].notna()] 
@@ -102,8 +102,8 @@ skew.plot(p, Td, 'g')
 Plotting wind barbs using our defined valid levels. You can 
 index this to adjust spacing (e.g. u[::20])
 '''
-skew.plot_barbs(wind_pressures, u, v)
 
+skew.plot_barbs(wind_pressures, u, v)
 
 '''
 Add the iconic skewT lines
@@ -115,6 +115,7 @@ skew.plot_mixing_lines()
 '''
 Set pressure and temperature limits and their labels. Also add a title.
 '''
+
 skew.ax.set_ylim(1000, 100)
 skew.ax.set_xlim(-40, 20)
 skew.ax.set_xlabel('Temperature ($^\circ$C)')

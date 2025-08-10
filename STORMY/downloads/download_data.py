@@ -373,7 +373,7 @@ def download_GOES(Satellite, Product, DateTimeIni=None, DateTimeFin=None, domain
 
     Downloaded_files.sort()
 
-    return Downloaded_files;
+    return Downloaded_files
 
 #-----------------------------------------------------------------------------------------------------------------------------------
 
@@ -398,14 +398,14 @@ def download_WSR88D(radar, DateTimeIni=None, DateTimeFin=None, path_out=''):
     - Uses the `nexradaws` interface to query and download data from NOAA's AWS S3 archive.
     - Only downloads files that do not already exist in the output directory.
     """
-
+    downloaded_files = []
     if DateTimeIni is None:
         print('\nYou must define initial DateTimeIni\n')
         return
     
     if DateTimeFin is None:
         DateTimeFin = DateTimeIni
-     
+    
     conn = nexradaws.NexradAwsInterface()
     scans = conn.get_avail_scans_in_range(DateTimeIni, DateTimeFin, radar)
     
@@ -415,17 +415,17 @@ def download_WSR88D(radar, DateTimeIni=None, DateTimeFin=None, path_out=''):
 
     print(f"\nThere are {len(scans)} scans available for {radar} between {DateTimeIni} and {DateTimeFin}\n")
 
-   
+
     for scan in scans:
         local_path = os.path.join(path_out, scan.filename)
-
+        downloaded_files.append(local_path)
         if os.path.exists(local_path):
             print(f"{scan.filename} already exists")
         else:
             print(f"Downloading {scan.filename}")
             conn.download(scan, path_out)
 
-    print('\n')
+    return downloaded_files
     
 
 def download_LMA(start, tbuffer=1800,path_out=''):
@@ -525,7 +525,7 @@ def download_ASOS(states=[], start_time=None, end_time=None, path_out='asos_data
         print("Please provide both start_time and end_time as datetime objects.")
         return
 
-    # If user passed a directory, generate a filename
+    # If user passed a directory, generate a complete filepath
     if os.path.isdir(path_out):
         fname = f"asos_data_{'_'.join(states)}_{start_time.strftime('%Y%m%d%H%M')}_{end_time.strftime('%Y%m%d%H%M')}.csv"
         path_out = os.path.join(path_out, fname)
@@ -533,7 +533,7 @@ def download_ASOS(states=[], start_time=None, end_time=None, path_out='asos_data
     # Check if the file already exists
     if os.path.exists(path_out):
         print(f"{path_out} already exists.")
-        return pd.read_csv(path_out)  
+        return path_out 
 
     # Step 1: Fetch station metadata
     all_stations = []
@@ -559,7 +559,7 @@ def download_ASOS(states=[], start_time=None, end_time=None, path_out='asos_data
     
     if not all_stations:
         print("No stations found.")
-        return
+        return None
 
     df_stations = pd.DataFrame(all_stations)
 
@@ -620,7 +620,8 @@ def download_ASOS(states=[], start_time=None, end_time=None, path_out='asos_data
         path_out = os.path.join(path_out, fname)
     df_all.to_csv(path_out, index=False)
     print(f"Data saved to {path_out}\n")
-    return df_all
+
+    return path_out
 
 def download_MRMS(field, start_time, end_time, path_out='mrms'):
     """

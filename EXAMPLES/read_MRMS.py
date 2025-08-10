@@ -1,9 +1,10 @@
 '''
 The Multi Radar Multi Sensor (MRMS) is a system which integrates operational
 WSR-88D radars, NWS Soundings, Satellite, and forecast models into algorithms 
-that produce many products such as isothermal reflectivites or quality controled
+that produce many products, such as isothermal reflectivites or quality controled
 composite reflectivity in .grib2 format. We being by importing necessary packages.
 '''
+
 import cfgrib
 import pandas as pd
 import numpy as np
@@ -23,12 +24,13 @@ start_time, end_time = datetime(2022, 11, 18, 23,55), datetime(2022, 11, 19, 00,
 savepath = r"C:\Users\thoma\Documents"
 
 MRMS_files = STORMY.download_MRMS(field= field,start_time=start_time,end_time=end_time,path_out=savepath)
+MRMS_file = MRMS_files[0] # Grab the first file for plotting purposes
 
 '''
 Now we can read the data and see what time the data is valid for
 '''
 
-ds = cfgrib.open_dataset(MRMS_files[1])
+ds = cfgrib.open_dataset(MRMS_file)
 ds = ds.metpy.parse_cf()
  
 valid_time = pd.to_datetime(ds['valid_time'].values)
@@ -64,7 +66,7 @@ lat_min, lat_max = 42.5, 44.5
 
 subset = ds.sel(
     longitude=slice(extent[0], extent[1]),
-    latitude=slice(extent[3], extent[2])  # Note: latitude is usually decreasing in WRF/GRIB
+    latitude=slice(extent[3], extent[2])  # Note: latitude is usually decreasing in GRIB
 )
 
 '''
@@ -122,8 +124,8 @@ mesh = ax.pcolormesh(MRMS_lons, MRMS_lats, z, cmap=cmap,norm=norm,shading="auto"
 
 '''
 Nearly complete figure! We now simply add a colorbar and title. The .format allows use to put variables as string
-inside {}, such as the time we are units for the WRF run. The "f" allows use to put variables in strings, such
-as the time we are using for the WRF run.
+inside {}, such as the units for the MRMS data. The "f" allows use to put variables in strings, such
+as the time we are using for the MRMS data.
 '''
 
 cb = fig.colorbar(mesh, ticks=levels, orientation='horizontal', shrink=.8,ax=ax)

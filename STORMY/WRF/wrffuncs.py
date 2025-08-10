@@ -9,6 +9,7 @@ from wrf import extract_times
 import requests
 from PIL import Image
 import cartopy.feature as cfeature
+import STORMY 
 
 # Adjust datetime to match filenames
 def round_to_nearest_5_minutes(dt):
@@ -28,21 +29,6 @@ def round_to_nearest_5_minutes(dt):
 
     return rounded_dt
 
-def parse_filename_datetime_obs(filepath):
-    
-    # Get the filename 
-        filename = filepath.split('/')[-1]
-    # Extract the date part (8 characters starting from the 5th character)
-        date_str = filename[4:12]
-    # Extract the time part (6 characters starting from the 13th character)
-        time_str = filename[13:19]
-    # Combine the date and time strings
-        datetime_str = date_str + time_str
-    # Convert the combined string to a datetime object
-    #datetime_obj = datetime.datetime.strptime(datetime_str, '%Y%m%d%H%M%S')
-    #formatted_datetime_obs = parse_filename_datetime_obs(radar_data)datetime_obj.strftime('%B %d, %Y %H:%M:%S') 
-        return datetime.strptime(datetime_str, '%Y%m%d%H%M%S')
-
 def find_closest_radar_file(target_datetime, directory, radar_prefix=None):
     """Finds the file in the directory with the datetime closest to the target datetime."""
     closest_file = None
@@ -59,7 +45,7 @@ def find_closest_radar_file(target_datetime, directory, radar_prefix=None):
         filename = os.path.basename(filepath)
         try:
             # Parse the datetime from the filename
-            file_datetime = parse_filename_datetime_obs(filename)
+            file_datetime = STORMY.parse_filename_datetime_obs(filename)
             # Calculate the difference between the file's datetime and the target datetime
             diff = abs((file_datetime - target_datetime).total_seconds())
             # Update the closest file if this file is closer
