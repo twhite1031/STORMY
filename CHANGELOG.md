@@ -9,7 +9,10 @@
   - COUNTY_SHAPEFILES
 - Added branch
   - dev-build
-- Added download functions to STORMY
+- Added functions to STORMY
+  - Downloading data
+  - Formatting Gridlines
+  - Adding Cartopy features
 - Added example scripts (read_<data>)
 
 # Version 1.0, July 7th, 2025
