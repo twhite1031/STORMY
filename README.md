@@ -8,7 +8,7 @@ Python packages and scripts to manipulate observed and modeled meteorological da
 <br><br>
 # Environment Installation
 There are a plethora of packages which enable use of STORMY.
-A conda environment (.yml) is provided [here](https://github.com/twhite1031/STORMY/setup_envs](https://github.com/twhite1031/STORMY/tree/main/envs)
+A conda environment (.yml) is provided [here](https://github.com/twhite1031/STORMY/tree/main/envs)
 
 <br><br>
 Install for Linux using:
