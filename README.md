@@ -14,13 +14,13 @@ A conda environment (.yml) is provided [here](https://github.com/twhite1031/STOR
 Install for Linux using:
 <br><br>
 ```
-conda env create -f useSTORMY_linux_1.1.yml
+conda env create -f useSTORMY_linux_1-1.yml
 ```
 <br><br>
 Install for Windows using:
 <br><br>
 ```
-conda env create -f useSTORMY_win_1.1.yml
+conda env create -f useSTORMY_win_1-1.yml
 ```
 <br><br>
 Activate conda environment to use scripts:
