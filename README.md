@@ -37,6 +37,9 @@ All notable changes to this project will be documented in this [file](https://gi
 <br><br>
 
 # Contact
+For questions, bugs, or collaboration, feel free to reach out by opening an issue or contacting the maintainer.
+<br><br>
+Email: thomaswhite675@gmail.com or thomas.james.white@und.edu
 
 
 
