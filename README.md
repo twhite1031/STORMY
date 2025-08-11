@@ -1,12 +1,16 @@
 # STORMY
 
-Python packages and scripts to manipulate observed and modeled meteorological data for research
+Python packages and scripts to manipulate and download observed and modeled meteorological data for research
 <br><br>
 
 # Version
 1.1 - STORMY is updated frequently, re-install for the latest version.
 <br><br>
 # Environment Installation
+This project relies on several Python packages, so a Conda environment is provided for convenience.
+<br><br>
+Refer to [this](https://www.anaconda.com/docs/getting-started/miniconda/main) link if you are unfamiliar or do not have Miniconda/Anaconda
+<br><br>
 There are a plethora of packages which enable use of STORMY.
 A conda environment (.yml) is provided [here](https://github.com/twhite1031/STORMY/tree/main/envs)
 
@@ -31,6 +35,31 @@ conda activate useSTORMY
 
 **Note**: Due to the large number of packages, installation may take >15 minutes. Please be patient.
 <br><br>
+# Cloning the Repository
+To have this repository on your on system, simply use git within your environment:
+```
+git clone https://github.com/twhite1031/STORMY.git
+```
+
+# Types of Data
+As you can see by the directory stucture, there are eight types of data used:
+- WRF
+- WSR88D (NEXRAD LVL II)
+- SURFACE (ASOS)
+- STORM REPORTS (SPC & NWS)
+- ERA5 (EWCMF REANALYSIS)
+- MRMS
+- SOUNDINGS (NWS & CUSTOM FORMATS)
+- GOES
+- EFM (Electric Field Meter; Work in Progress)
+
+# Functionality
+STORMY serves as a github repository as well as a custom python package. The goal of
+STORMY is to streamline the data analysis proccess, allowing for all skill levels
+to make meaningful plots with complex data. 
+
+I recommened beginning in the [EXAMPLES directory](https://github.com/twhite1031/STORMY/tree/main/EXAMPLES), 
+where you can learn how the data is downloaded, formatted, and how to plot it on a basic map. 
 
 # Change log
 All notable changes to this project will be documented in this [file](https://github.com/twhite1031/STORMY/blob/main/CHANGELOG.md)
