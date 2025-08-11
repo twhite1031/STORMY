@@ -73,10 +73,11 @@ With our completed DataFrames we can now start to create our filter. We are main
 interested in filtering the flash events given our time, time buffer, max chi^2 and
 minimum stations
 '''
-
+start_time = time
+end_time = start_time + timedelta(seconds=tbuffer)
 selection = (
-    (flash_events["datetime"] >= time) &
-    (flash_events["datetime"] < time + timedelta(seconds=tbuffer)) &
+    (flash_events["datetime"] >= start_time) &
+    (flash_events["datetime"] < end_time) &
     (flash_events.chi2 <= max_chi) &
     (flash_events.stations >= min_stations)
 )
@@ -121,7 +122,7 @@ Here we define a bounding box and apply it to the figure as well as setting a ti
 
 extent = [-76.5, -75.8, 43.9, 44.2] # Min lon, max lon, min lat, max lat
 ax.set_extent(extent, crs=crs.PlateCarree())
-ax.set_title("Filtered LMA Lightning Events")
+ax.set_title(f"Filtered LMA Lightning Events from {start_time} to {end_time}")
 
 '''
 The figure is now complete!! Lets create a suitable filename that we can use to save the figure and

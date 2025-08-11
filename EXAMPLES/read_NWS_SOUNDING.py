@@ -19,10 +19,10 @@ time range (start and end) you'd like to grab.
 
 stations = ['KBUF']
 start_time, end_time = datetime(2022, 11, 18, 23,55), datetime(2022, 11, 19, 00, 30)
-savepath = r"C:\Users\thoma\Documents"
+savepath = "/data2/white/DATA/MISC/SOUNDINGS/"
 
 SOUNDING_file = STORMY.download_NWS_SOUNDING(start_time=start_time,end_time=end_time,stations=stations,path_out=savepath)
-print(SOUNDING_file)
+
 '''
 Now we can read the data, defined by the headers on line 1 (index 0)
 '''
@@ -46,6 +46,16 @@ if 'validUTC' in df.columns:
 
 start_time = df["validUTC"][0]
 formatted_time =  start_time.strftime("%Y%m%d_%H%M")
+
+'''
+A caveat when downloading multiple stations (and times) of sounding data
+is that it is all stored in one file. Therefore we should explicitly define
+the start time and station of the sounding we want.
+'''
+target_time = datetime(2022,11,19,00) # Typically 0Z, 6Z, 12Z, 18Z
+station = 'KBUF'
+
+df = df[(df['station'] == station) & (df['validUTC'] == target_time)]
 
 '''
 We can now extract the necessary values to create
@@ -120,14 +130,14 @@ skew.ax.set_ylim(1000, 100)
 skew.ax.set_xlim(-40, 20)
 skew.ax.set_xlabel('Temperature ($^\circ$C)')
 skew.ax.set_ylabel('Pressure (hPa)')
-plt.title(f"SkewT at {start_time} ")
+plt.title(f"{station} at {start_time} ")
 
 '''
 The skewT is now complete!! Lets create a suitable filename that we can use to save the skewT and
 use it in the future. The skewT will be saved using savepath, which you defined earlier.
 '''
 
-filename = "NWS_SOUNDINGTUTORIAL_{formatted_time}.png" # Just to the minute
+filename = f"NWS_SOUNDINGTUTORIAL_{formatted_time}.png" # Just to the minute
 
 plt.savefig(savepath + filename)
 plt.show()

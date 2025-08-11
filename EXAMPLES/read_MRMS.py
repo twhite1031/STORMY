@@ -21,7 +21,7 @@ for MRMS files given the time range. Optionally, we can define a path to save th
 
 field = "Reflectivity_-10C_00.50"
 start_time, end_time = datetime(2022, 11, 18, 23,55), datetime(2022, 11, 19, 00, 30)
-savepath = r"C:\Users\thoma\Documents"
+savepath = '/data2/white/DATA/MISC/MRMS/'
 
 MRMS_files = STORMY.download_MRMS(field= field,start_time=start_time,end_time=end_time,path_out=savepath)
 MRMS_file = MRMS_files[0] # Grab the first file for plotting purposes
@@ -60,7 +60,7 @@ as our viewing extent.
 
 ds = ds.assign_coords(longitude=(((ds.longitude + 180) % 360) - 180))
 
-extent = [-77, -72, 41, 45] # Min lon, max lon, min lat, max lat
+extent = [-80, -72, 41, 45] # Min lon, max lon, min lat, max lat
 lon_min, lon_max = -78.5, -74.5
 lat_min, lat_max = 42.5, 44.5
 
@@ -132,7 +132,7 @@ cb = fig.colorbar(mesh, ticks=levels, orientation='horizontal', shrink=.8,ax=ax)
 cb.set_label(label='{}'.format("dBZ"), color='black')
 cb.outline.set_linewidth(0.5)
 
-ax.set_title(f"MRMS -10C Reflectivity at {formatted_time}", fontsize=14)
+ax.set_title(f"MRMS -10C Reflectivity at {valid_time}", fontsize=14)
 
 '''
 The figure is now complete!! Lets create a suitable filename that we can use to save the figure and

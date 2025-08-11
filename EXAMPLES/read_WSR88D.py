@@ -21,8 +21,8 @@ store the WSR88D files and the time range (start and end) you'd like to grab. We
 
 radar = 'KTYX'
 start_time, end_time = datetime(2022, 11, 18, 23,55), datetime(2022, 11, 19, 00, 30)
-savepath = r"C:\Users\thoma\Documents"
-WSR88D_path = r"C:\Users\thoma\Documents"
+savepath = "/data2/white/MISC/WSR88D/LVL2/"
+WSR88D_path = "/data2/white/MISC/WSR88D/LVL2/"
 
 WSR88D_files = STORMY.download_WSR88D(radar, DateTimeIni=start_time, DateTimeFin=end_time, path_out=WSR88D_path)
 print(WSR88D_files)
@@ -120,7 +120,7 @@ Nearly complete figure! We now simply add the area we would like to view, colorb
 he "f" allows use to put variables in strings, such as the time of the radar scan.
 '''
 
-extent = [-77, -72, 41, 45] # Min lon, max lon, min lat, max lat
+extent = [-80, -72, 41, 45] # Min lon, max lon, min lat, max lat
 ax.set_extent(extent, crs=crs.PlateCarree())
 
 ax.set_xlabel("Longitude", fontsize=8)

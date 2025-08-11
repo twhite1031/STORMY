@@ -24,8 +24,8 @@ Optionally, we can define a path to save the data to.
 
 states = ["NY"]
 start_time, end_time = datetime(2022,11,18,19,50), datetime(2022,11,18,20,10)
-ASOS_path = r'C:\Users\thoma\Documents'
-savepath = r'C:\Users\thoma\Documents'
+ASOS_path = '/data2/white/DATA/MISC/ASOS/'
+savepath = '/data2/white/DATA/MISC/ASOS/'
 
 ASOS_file = STORMY.download_ASOS(
     states=["NY"],

@@ -102,6 +102,7 @@ cmap = plt.get_cmap("NWSRef")  # or your defined reflectivity colormap
 
 # Create a BoundaryNorm for shared normalization
 norm = BoundaryNorm(boundaries=levels, ncolors=cmap.N, clip=True)
+
 # Plot MRMS with pcolormesh 
 mesh = ax1.pcolormesh(MRMS_lons, MRMS_lats, z, cmap=cmap,norm=norm,shading="auto", transform=ccrs.PlateCarree())
 

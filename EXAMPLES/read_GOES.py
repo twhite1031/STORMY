@@ -33,7 +33,7 @@ GOES_files = STORMY.download_GOES('goes16', 'ABI-L2-CMIPF',
 Now we can read the data and define our viewing extent
 '''
 
-extent = [-77, -72, 41, 45] # Min lon, max lon, min lat, max lat
+extent = [-80, -72, 41, 45] # Min lon, max lon, min lat, max lat
 ds = GOES.open_dataset(GOES_files[0]) # Grab the first file to plot
 
 '''
