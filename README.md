@@ -44,7 +44,8 @@ git clone https://github.com/twhite1031/STORMY.git
 # Types of Data
 As you can see by the directory stucture, there are eight types of data used:
 - WRF
-- WSR88D (NEXRAD LVL II)
+- WSR88D (NEXRAD LVL II RADAR)
+- DOW (Doppler on Wheels)
 - SURFACE (ASOS)
 - STORM REPORTS (SPC & NWS)
 - ERA5 (EWCMF REANALYSIS)
