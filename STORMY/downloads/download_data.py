@@ -2,14 +2,14 @@
 #-----------------------------------------------------------------------------------------------------------------------------------
 '''
 Description: Download Meteorological Data Straight from Source
-- GOES 16-19
+- GOES 16-19 @joaohenry23
 - WSR88D LVL II Data
 - NSSL LMA h5 Files
 - ASOS by State
-
-In Progress:
 - MRMS
 - ERA5
+- NWS Soundings
+
 Author: Thomas White
 E-mail: thomaswhite675@gmail.com
 Created date: July 31, 2025
@@ -22,7 +22,6 @@ from datetime import *
 import requests
 import os
 import subprocess
-import nexradaws
 import pandas as pd
 import gzip
 import shutil
@@ -30,6 +29,7 @@ import boto3
 from botocore import UNSIGNED
 from botocore.config import Config
 import cdsapi
+import nexradaws
 
 from io import StringIO
 from urllib3.util.retry import Retry
