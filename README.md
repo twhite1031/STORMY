@@ -10,7 +10,7 @@ Python package and scripts to manipulate and download observed and modeled meteo
 This project relies on several Python packages, so a Conda environment is provided for convenience.
 <br><br>
 Refer to [this](https://www.anaconda.com/docs/getting-started/miniconda/main) link if you are unfamiliar or do not have Miniconda/Anaconda. <br>
-You will need miniconda or Anaconda to create an environment
+You will need miniconda or Anaconda to create an environment.
 <br><br>
 There are a plethora of packages which enable use of STORMY.
 A conda environment (.yml) is provided [here](https://github.com/twhite1031/STORMY/tree/main/envs)
