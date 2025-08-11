@@ -10,6 +10,7 @@
 - Added branch
   - dev-build
 - Added download functions to STORMY
+- Added example scripts (read_<data>)
 
 # Version 1.0, July 7th, 2025
 - Added Directories
