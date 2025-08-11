@@ -111,7 +111,7 @@ use it in the future. The figure will be saved using savepath, which you defined
 '''
 
 time_str = matched_time.strftime("%Y-%m-%d_%H-%M-%S")
-filename = "WRFTUTORIAL_{time_str}.png"
+filename = f"WRFTUTORIAL_{time_str}.png"
 plt.savefig(savepath + filename)
 plt.show()
 

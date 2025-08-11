@@ -135,7 +135,7 @@ The figure is now complete!! Lets create a suitable filename that we can use to 
 use it in the future. The figure will be saved using savepath, which you defined earlier.
 '''
 
-filename = "WSR88DTUTORIAL_{time_str}.png"
+filename = f"WSR88DTUTORIAL_{time_str}.png"
 plt.savefig(savepath + filename)
 plt.show()
 

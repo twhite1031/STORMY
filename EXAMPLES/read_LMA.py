@@ -130,7 +130,7 @@ use it in the future. The figure will be saved using savepath, which you defined
 '''
 
 time_str = time.strftime("%Y-%m-%d_%H-%M-%S")
-filename = "LMATUTORIAL_{time_str}.png"
+filename = f"LMATUTORIAL_{time_str}.png"
 plt.savefig(savepath + filename)
 plt.show()
 
