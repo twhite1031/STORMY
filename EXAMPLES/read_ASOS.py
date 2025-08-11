@@ -27,7 +27,7 @@ start_time, end_time = datetime(2022,11,18,19,50), datetime(2022,11,18,20,10)
 ASOS_path = '/data2/white/DATA/MISC/ASOS/'
 savepath = '/data2/white/DATA/MISC/ASOS/'
 
-ASOS_file = STORMY.download_ASOS(
+ASOS_file = STORMY.download_ASOS_STATES(
     states=["NY"],
     start_time=start_time,
     end_time=end_time,

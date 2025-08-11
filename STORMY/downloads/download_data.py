@@ -427,6 +427,7 @@ def download_WSR88D(radar, DateTimeIni=None, DateTimeFin=None, path_out=''):
 
     return downloaded_files
     
+#-----------------------------------------------------------------------------------------------------------------------------------
 
 def download_LMA(start, tbuffer=1800,path_out=''):
     """
@@ -452,12 +453,11 @@ def download_LMA(start, tbuffer=1800,path_out=''):
     ------
     - Files are downloaded from:
       https://data.nssl.noaa.gov/thredds/fileServer/WRDD/OKLMA/deployments/flashsort_6/h5_files
-    - Files are skipped if they already exist locally.
     """
 
     base_url = 'https://data.nssl.noaa.gov/thredds/fileServer/WRDD/OKLMA/deployments/flashsort_6/h5_files'
 
-    os.makedirs(path_out, exist_ok=True)
+    os.makedirs(path_out, exist_ok=True) # Make the directory if it doesn't exist
     downloaded_files = []
 
     # Loop through each 10-min interval from start to start + tbuffer
@@ -483,7 +483,9 @@ def download_LMA(start, tbuffer=1800,path_out=''):
     print('\n')
     return downloaded_files
 
-def download_ASOS(states=[], start_time=None, end_time=None, path_out='asos_data.csv'):
+#-----------------------------------------------------------------------------------------------------------------------------------
+
+def download_ASOS_STATES(states=[], start_time=None, end_time=None, path_out='asos_data.csv'):
     """
     Download ASOS weather observations from IEM (Iowa Environmental Mesonet) 
     for a list of U.S. states and a specified time range.
@@ -502,9 +504,8 @@ def download_ASOS(states=[], start_time=None, end_time=None, path_out='asos_data
 
     Returns:
     -------
-    df_all : pandas.DataFrame
-        A DataFrame containing the combined ASOS observations with metadata.
-        Returns None if no data was retrieved or if input validation fails.
+    downloaded_files : list of str
+        Paths to the downloaded (or already existing) .csv file.
 
     Notes:
     ------
@@ -512,8 +513,6 @@ def download_ASOS(states=[], start_time=None, end_time=None, path_out='asos_data
       https://mesonet.agron.iastate.edu/cgi-bin/request/asos.py
     - Station metadata (lat/lon/elevation) is retrieved from GeoJSON via:
       https://mesonet.agron.iastate.edu/geojson/network.py
-    - If the specified file already exists, it is loaded and returned directly
-      without re-downloading.
     - Columns include temperature, dewpoint, wind, pressure, precipitation, 
       and cloud cover (skyc1 to skyc4).
     """
@@ -623,6 +622,8 @@ def download_ASOS(states=[], start_time=None, end_time=None, path_out='asos_data
 
     return path_out
 
+#-----------------------------------------------------------------------------------------------------------------------------------
+
 def download_MRMS(field, start_time, end_time, path_out='mrms'):
     """
     Download all MRMS grib2.gz files between start_time and end_time
@@ -690,6 +691,8 @@ def download_MRMS(field, start_time, end_time, path_out='mrms'):
     
     return files_downloaded
 
+#-----------------------------------------------------------------------------------------------------------------------------------
+
 def download_ERA5_SINGLE(start_time, end_time, variables, area, path_out=''):
     """
     Download ERA5 single-level hourly GRIB data for one or more variables over a specified datetime range.
@@ -716,7 +719,6 @@ def download_ERA5_SINGLE(start_time, end_time, variables, area, path_out=''):
     ------
     - Uses the CDS API (`cdsapi`) to download ERA5 single-level data from the Copernicus Climate Data Store.
     - Data is retrieved on a daily basis, broken down by hour range per day.
-    - Automatically skips downloads if the output file already exists.
     - Each variable is requested independently, with one GRIB file per day per variable.
     - Output filenames follow the pattern:
       'ERA5S_<variable>_YYYYMMDD_HHMM-HHMM.grib'
@@ -783,21 +785,29 @@ def download_ERA5_SINGLE(start_time, end_time, variables, area, path_out=''):
 
     return downloaded_files
 
+#-----------------------------------------------------------------------------------------------------------------------------------
+
 def download_NWS_SOUNDING(start_time, end_time, stations, path_out=None):
     """
-    Fetches NWS upper-air sounding data from the IEM RAOB API.
+    Fetches NWS upper-air sounding data from the (Iowa Environmental Mesonet) Rawsinsonde
+    Data Archive (RAOB) API.
 
     Parameters:
     -------
-    - start_time (datetime): Start time (UTC)
-    - end_time (datetime): End time (UTC)
-    - stations (list): List of NWS station identifiers (e.g., ['BUF', 'ALB'])
-    - path_out (str, optional): Path to save CSV file. If None, does not save.
+    start_time : datetime.datetime
+        Start time of the data request (UTC).
+    end_time : datetime.datetime
+        End time time of the data request (UTC).
+    stations  : list of str 
+        List of NWS station identifiers (e.g., ['BUF', 'ALB'])
+    path_out : str
+        File path or directory to save the CSV output. If none, does
+        not save
 
     Returns:
     -------
-
-    - pd.DataFrame: Sounding data for given stations and time range.
+    downloaded_files : list of str
+        Paths to the downloaded (or already existing) .csv file.
     """
     base_url = "https://mesonet.agron.iastate.edu/cgi-bin/request/raob.py"
 
@@ -838,3 +848,4 @@ def download_NWS_SOUNDING(start_time, end_time, stations, path_out=None):
     
     return full_path
 
+#-----------------------------------------------------------------------------------------------------------------------------------

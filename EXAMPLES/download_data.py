@@ -10,7 +10,7 @@ STORMY.download_WSR88D("KTYX", DateTimeIni=datetime(2022,11,18,20,00), DateTimeF
 
 STORMY.download_LMA(datetime(2022,11,18,20,00),tbuffer=1800, path_out='/data2/white/MISC/LMA/')
 
-STORMY.download_ASOS(
+STORMY.download_ASOS_STATES(
     states=["IA"],
     start_time=datetime(2022, 11, 18, 20, 0),
     end_time=datetime(2022, 11, 18, 20, 10),
