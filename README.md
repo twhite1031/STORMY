@@ -1,6 +1,6 @@
 # STORMY
 
-Python packages and scripts to manipulate and download observed and modeled meteorological data for research
+Python package and scripts to manipulate and download observed and modeled meteorological data for research
 <br><br>
 
 # Version
