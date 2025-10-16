@@ -1,2 +1,18 @@
+ Byte-compiled files
 __pycache__/
+*.py[cod]
+*.pyc
+
+# Distribution / packaging
+*.egg-info/
+*.egg
+dist/
+build/
+
+# Duplicate Files
 *.swp
+
+# Ignore all output images
+*.png
+*.jpg
+*.jpeg
