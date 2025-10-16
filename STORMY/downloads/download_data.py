@@ -417,6 +417,8 @@ def download_WSR88D(radar, DateTimeIni=None, DateTimeFin=None, path_out=''):
 
 
     for scan in scans:
+        # Handle None or empty string
+        path_out = path_out if path_out else "."
         local_path = os.path.join(path_out, scan.filename)
         downloaded_files.append(local_path)
         if os.path.exists(local_path):
@@ -456,6 +458,9 @@ def download_LMA(start, tbuffer=1800,path_out=''):
     """
 
     base_url = 'https://data.nssl.noaa.gov/thredds/fileServer/WRDD/OKLMA/deployments/flashsort_6/h5_files'
+
+    # Handle None or empty string
+    path_out = path_out if path_out else "."
 
     os.makedirs(path_out, exist_ok=True) # Make the directory if it doesn't exist
     downloaded_files = []
@@ -659,6 +664,9 @@ def download_MRMS(field, start_time, end_time, path_out='mrms'):
     """
 
     s3 = boto3.client('s3', config=Config(signature_version=UNSIGNED))
+
+    # Handle None or empty string
+    path_out = path_out if path_out else "."
     os.makedirs(path_out, exist_ok=True)
 
     files_downloaded = []
@@ -832,6 +840,9 @@ def download_NWS_SOUNDING(start_time, end_time, stations, path_out=None):
     }
     # Filename and full path
     filename = f"nws_soundings_{start_time.strftime('%Y%m%d%H')}_{end_time.strftime('%Y%m%d%H')}_{'_'.join(stations)}.csv"
+
+    # Handle None or empty string
+    path_out = path_out if path_out else "."
     full_path = os.path.join(path_out, filename)
     
     # === Skip if file already exists ===

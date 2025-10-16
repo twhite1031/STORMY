@@ -21,7 +21,7 @@ for MRMS files given the time range. Optionally, we can define a path to save th
 
 field = "Reflectivity_-10C_00.50"
 start_time, end_time = datetime(2022, 11, 18, 23,55), datetime(2022, 11, 19, 00, 30)
-savepath = '/data2/white/DATA/MISC/MRMS/'
+savepath = ''
 
 MRMS_files = STORMY.download_MRMS(field= field,start_time=start_time,end_time=end_time,path_out=savepath)
 MRMS_file = MRMS_files[0] # Grab the first file for plotting purposes

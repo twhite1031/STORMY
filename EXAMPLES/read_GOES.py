@@ -24,7 +24,7 @@ the Satellite and channel(s) we want. Optionally, we can define a path to save t
 '''
 
 start_time, end_time = '20221118-135000', '20221118-140100'
-savepath = '/data2/white/DATA/MISC/SATELLITE/'
+savepath = ''
 GOES_files = STORMY.download_GOES('goes16', 'ABI-L2-CMIPF',
                       DateTimeIni=start_time, DateTimeFin=end_time,
                       channel=['13'], path_out=savepath)
@@ -140,6 +140,7 @@ with a suitable title using the metadata we gathered earlier
 ax.set_extent([extent[0]+360.0, extent[1]+360.0, extent[2], extent[3]], crs=crs.PlateCarree())
 
 GOES_time = CMI.time_bounds.data[0].strftime('%Y/%m/%d %H:%M UTC')
+GOES_time_filename = CMI.time_bounds.data[0].strftime('%Y%m%d_%H%M')
 ax.set_title('{} - C{:02d} [{:.1f} μm]'.format(sat,band, wl), fontsize=7, loc='left')
 ax.set_title(GOES_time, fontsize=7, loc='right')
 
@@ -148,7 +149,7 @@ The figure is now complete!! Lets create a suitable filename that we can use to 
 use it in the future. The figure will be saved using savepath, which you defined earlier.
 '''
 
-filename = f"GOESTUTORIAL_{GOES_time}.png"
+filename = f"GOESTUTORIAL_{GOES_time_filename}.png"
 plt.savefig(savepath + filename)
 
 # set the map limits

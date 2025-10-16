@@ -1,4 +1,4 @@
- Byte-compiled files
+# Byte-compiled files
 __pycache__/
 *.py[cod]
 *.pyc
@@ -19,3 +19,10 @@ build/
 
 # VScode settings
 .vscode/
+
+# Typical Data Types
+*.nc
+*.h5
+*.hdf5
+*.grib
+*.csv # Adjustable if you want to track csv files

@@ -21,8 +21,8 @@ store the WSR88D files and the time range (start and end) you'd like to grab. We
 
 radar = 'KTYX'
 start_time, end_time = datetime(2022, 11, 18, 23,55), datetime(2022, 11, 19, 00, 30)
-savepath = "/data2/white/MISC/WSR88D/LVL2/"
-WSR88D_path = "/data2/white/MISC/WSR88D/LVL2/"
+savepath = ""
+WSR88D_path = ""
 
 WSR88D_files = STORMY.download_WSR88D(radar, DateTimeIni=start_time, DateTimeFin=end_time, path_out=WSR88D_path)
 print(WSR88D_files)

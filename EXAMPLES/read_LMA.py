@@ -6,6 +6,7 @@ data in .h5 and .gz file formats. This tutorial will show how to read .h5 LMA fi
 We being by importing necessary packages.
 '''
 
+import os
 from datetime import datetime, timedelta
 import pandas as pd
 import numpy as np
@@ -20,7 +21,7 @@ for LMA files time +- buffer. Optionally, we can define a path to save the data 
 
 time = datetime(2022, 11, 18, 23,55)
 tbuffer = 1800 # seconds
-savepath = "/data2/white/DATA/MISC/LMA"
+savepath = ""
 
 LMA_files = STORMY.download_LMA(time,tbuffer=tbuffer, path_out=savepath)
 
@@ -44,10 +45,8 @@ flashes = pd.DataFrame() # Initialize DataFrame to store the data
 flash_events = pd.DataFrame() # Initialize DataFrame to store the data
 
 for filename in LMA_files:
-    timeobj = datetime.strptime(
-        filename.split('/')[-1],
-        "LYLOUT_%y%m%d_%H%M%S_0600.dat.flash.h5"
-    )
+    file = os.path.basename(filename)
+    timeobj = datetime.strptime(file, 'LYLOUT_%y%m%d_%H%M%S_0600.dat.flash.h5')
     midnight = datetime(*timeobj.timetuple()[:3])  # Midnight of that file's day
     time_str = timeobj.strftime('%y%m%d_%H%M') # Format for subdirectories
     
