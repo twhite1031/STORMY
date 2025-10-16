@@ -16,3 +16,6 @@ build/
 *.png
 *.jpg
 *.jpeg
+
+# VScode settings
+.vscode/
