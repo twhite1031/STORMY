@@ -614,9 +614,21 @@ def download_ASOS_STATES(states=[], start_time=None, end_time=None, path_out='as
     )
 
     # Step 4: Save to file
-    if os.path.isdir(path_out):
+    if not path_out:
+        # No path provided - use current directory with auto-generated filename
+        fname = f"asos_data_{'_'.join(states)}_{start_time.strftime('%Y%m%d%H%M')}_{end_time.strftime('%H%M')}.csv"
+        path_out = fname
+    elif os.path.isdir(path_out):
+        # Directory provided - generate filename and join
         fname = f"asos_data_{'_'.join(states)}_{start_time.strftime('%Y%m%d%H%M')}_{end_time.strftime('%H%M')}.csv"
         path_out = os.path.join(path_out, fname)
+    else:
+        # Assume it's a full file path - use as-is
+        # Optionally validate the parent directory exists
+        parent_dir = os.path.dirname(path_out)
+        if parent_dir and not os.path.exists(parent_dir):
+            raise ValueError(f"Directory does not exist: {parent_dir}")
+
     df_all.to_csv(path_out, index=False)
     print(f"Data saved to {path_out}\n")
 
