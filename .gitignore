@@ -25,4 +25,7 @@ build/
 *.h5
 *.hdf5
 *.grib
+*.grib2
 *.csv # Adjustable if you want to track csv files
+*_V06*
+*_MDM
