@@ -547,10 +547,10 @@ class LMADownloader(DataDownloader):
 class NWSSoundingDownloader(DataDownloader):
     """Download NWS Sounding data."""
 
-    BASE_URL = "https://data.nssl.noaa.gov/thredds/fileServer/WRDD"
+    base_url = "https://mesonet.agron.iastate.edu/cgi-bin/request/raob.py"
 
     @staticmethod
-    def _download_file(url, name_file, path_out, overwrite_file=False):
+    def _download_file(url, payload, name_file, path_out, overwrite_file=False):
         """Stream download with simple progress bar."""
         output_path = Path(path_out) / name_file
         start_time = datetime.now()
@@ -561,7 +561,7 @@ class NWSSoundingDownloader(DataDownloader):
             return output_path
 
         # Stream request
-        with requests.get(url, stream=True, timeout=60) as r:
+        with requests.get(url, params=payload, stream=True, timeout=60) as r:
             r.raise_for_status()
             total = int(r.headers.get("content-length", 0))
             size = 0
@@ -584,6 +584,7 @@ class NWSSoundingDownloader(DataDownloader):
 
     def download(
         self,
+        stations: list[str],
         start_time: datetime,
         end_time: Optional[datetime] = None,
         *,
@@ -597,31 +598,30 @@ class NWSSoundingDownloader(DataDownloader):
         failure_count = 0
 
         logger.info(
-            f"Downloading LMA data from {time_range.start} to {time_range.end}"
+            f"Downloading {stations} NWS Sounding data from {time_range.start} to {time_range.end}"
         )
 
-        base_url = f"{self.BASE_URL}/OKLMA/deployments/flashsort_6/h5_files"
+        payload = {
+        "sts": start_time.strftime("%Y-%m-%dT%H:%MZ"),
+        "ets": end_time.strftime("%Y-%m-%dT%H:%MZ"),
+        "station": ','.join(stations),
+        "format": "comma",
+        "fields": "all",
+        }
 
-        # Snap times to nearest 10-min intervals
-        start_aligned = start_time.replace(minute=(start_time.minute // 10) * 10, second=0)
-        end_aligned = end_time.replace(minute=(end_time.minute // 10) * 10, second=0)
-
-        for timestamp in pd.date_range(start_aligned, end_aligned, freq="10min"):
-            filename = f"LYLOUT_{timestamp.strftime('%y%m%d_%H%M')[:-1]}000_0600.dat.flash.h5"
-            url = f"{base_url}/{timestamp.strftime('%Y/%m/%d')}/{filename}"
-
-            try:
-                output_path = self._download_file(
-                    url, filename, self.path_out, overwrite_file=overwrite_file
-                )
-                downloaded_files.append(output_path)
-                success_count += 1
-            except Exception as e:
-                failure_count += 1
-                logger.error(f"❌ Failed to download {filename}: {e}")
+        # Filename and full path
+        name_file = f"nws_soundings_{start_time.strftime('%Y%m%d%H')}_{end_time.strftime('%Y%m%d%H')}_{'_'.join(stations)}.csv"
+        base_url = self.base_url
+        try:
+            output_path = self._download_file( base_url, payload, name_file, self.path_out, overwrite_file=overwrite_file)
+            downloaded_files.append(output_path)
+            success_count += 1
+        except Exception as e:
+            failure_count += 1
+            logger.error(f"❌ Failed to download {name_file}: {e}")
 
         if not downloaded_files:
-            raise DataNotFoundError(f"No LMA data found for specified time range")
+            raise DataNotFoundError(f"No {stations} data found for specified time range")
 
         total_size = sum(f.stat().st_size for f in downloaded_files) / (1024**2)
         return DownloadResult(downloaded_files, success_count, failure_count, total_size)
