@@ -13,6 +13,7 @@ import cartopy.crs as crs
 import matplotlib.pyplot as plt
 from matplotlib.colors import BoundaryNorm
 import STORMY
+from STORMY import STORMY_downloader
 
 '''
 After importing, we must download the MRMS files given a field, start time and endtime, which will search
@@ -23,8 +24,16 @@ field = "Reflectivity_-10C_00.50"
 start_time, end_time = datetime(2022, 11, 18, 23,55), datetime(2022, 11, 19, 00, 30)
 savepath = ''
 
-MRMS_files = STORMY.download_MRMS(field= field,start_time=start_time,end_time=end_time,path_out=savepath)
-MRMS_file = MRMS_files[0] # Grab the first file for plotting purposes
+downloader = STORMY_downloader(data_root='')
+result = downloader.download_MRMS(field=field,
+    start_time=start_time,
+    end_time=end_time,
+)
+print(result.files)
+MRMS_file = result.files[0]
+
+#MRMS_files = STORMY.download_MRMS(field= field,start_time=start_time,end_time=end_time,path_out=savepath)
+#MRMS_file = MRMS_files[0] # Grab the first file for plotting purposes
 
 '''
 Now we can read the data and see what time the data is valid for

@@ -18,6 +18,11 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 import pandas as pd
+import boto3
+from botocore import UNSIGNED
+from botocore.config import Config
+import gzip
+import shutil
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -625,6 +630,119 @@ class NWSSoundingDownloader(DataDownloader):
 
         total_size = sum(f.stat().st_size for f in downloaded_files) / (1024**2)
         return DownloadResult(downloaded_files, success_count, failure_count, total_size)
+
+class MRMSDownloader(DataDownloader):
+    """
+    Hybrid downloader using boto3 for S3 listing + presigned URLs,
+    and requests for robust, controllable downloads with progress.
+    """
+
+    @staticmethod
+    def download_file(s3, bucket,key, name_file, path_out, retries=10, backoff=0.2, size_format='Decimal', show_download_progress=True, overwrite_file=False):
+        gz_path = Path(path_out) / name_file 
+        start_time = datetime.now()    
+
+        # Check if file exists
+        if gz_path.exists() and not overwrite_file:
+            logger.warning(f"  {name_file} already exists.")
+            return gz_path
+        
+        # --- Generate presigned URL for this file ---
+        url = s3.generate_presigned_url(
+            ClientMethod='get_object',
+            Params={'Bucket': bucket, 'Key': key},
+            ExpiresIn=3600,  # valid for 1 hour
+        )
+
+        # --- Download via requests with retries ---
+        session = requests.Session()
+        retries = Retry(total=5, backoff_factor=0.5, status_forcelist=[500, 502, 503, 504])
+        session.mount('https://', HTTPAdapter(max_retries=retries))
+
+        with session.get(url, stream=True, timeout=60) as r:
+            r.raise_for_status()
+            total = int(r.headers.get('content-length', 0))
+            size = 0
+            with open(gz_path, "wb") as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    if not chunk:
+                        continue
+                    f.write(chunk)
+                    size += len(chunk)
+
+                    # --- progress bar ---
+                    elapsed = datetime.now() - start_time
+                    pct = (size / total * 100) if total > 0 else 0
+                    mb = size / 1_000_000
+                    eta = f"{elapsed.seconds//60}m{elapsed.seconds%60}s"
+                    print(f"  {name_file} {pct:3.0f}% {mb:.1f}MB {eta}", end="\r")
+
+        print(f"\n✅ {name_file} downloaded ({mb:.1f}MB)")
+        return gz_path
+
+    def download(
+        self,
+        field: str,
+        start_time: datetime,
+        end_time: Optional[datetime] = None,
+        *,
+        overwrite_file: bool = False,
+        **kwargs,
+    ) -> DownloadResult:
+        # --- Setup AWS S3 (public access) ---
+        s3 = boto3.client('s3', config=Config(signature_version=UNSIGNED))
+        bucket = 'noaa-mrms-pds'
+
+        # --- Find files via paginator ---
+        prefix = f"CONUS/{field}/{start_time.strftime('%Y%m%d')}"
+        paginator = s3.get_paginator('list_objects_v2')
+        pages = paginator.paginate(Bucket=bucket, Prefix=prefix)
+
+        downloaded_files = []
+        success_count = 0
+        failure_count = 0
+        for page in pages:
+            for obj in page.get('Contents', []):
+                key = obj['Key']
+                ts_str = key[-24:-9]
+                try:
+                    ftime = datetime.strptime(ts_str, "%Y%m%d-%H%M%S")
+                except ValueError:
+                    continue
+
+                if not (start_time <= ftime <= end_time):
+                    continue
+
+                name_file = f"{field}_{ftime:%Y%m%d%H%M%S}.grib2.gz"
+
+                # --- Download compressed file ---
+                try:
+                    downloaded_gz_path = self.download_file(s3, bucket, key, name_file, self.path_out, overwrite_file=overwrite_file)
+                    success_count += 1
+                except Exception as e:
+                    logger.error(f"❌ Failed to download {name_file}: {e}")
+                    failure_count += 1
+                    continue
+               
+
+                # --- Unzip ---
+                output_path = Path(self.path_out) / name_file[:-3]  # remove .gz
+                with gzip.open(downloaded_gz_path, 'rb') as gz:
+                    with open(output_path, 'wb') as out:
+                        shutil.copyfileobj(gz, out)
+                downloaded_gz_path.unlink()  # remove .gz
+
+                print(f"✅ Downloaded & unzipped: {name_file}")
+                downloaded_files.append(output_path)
+
+        if not downloaded_files:
+            print("⚠️ No MRMS files found in specified range.")
+        else:
+            print(f"\n🎯 Finished: {len(downloaded_files)} files downloaded.")
+
+        total_size = sum(f.stat().st_size for f in downloaded_files) / (1024**2)
+        return DownloadResult(downloaded_files, success_count, failure_count, total_size)
+    
 # ============================================================================
 # High-level API
 # ============================================================================
