@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 import custom_color_palette as ccp # @jaohenry23 custom package
 import matplotlib.pyplot as plt
 from cartopy.mpl.ticker import LatitudeFormatter, LongitudeFormatter
+from STORMY import STORMY_downloader
 import STORMY
 import GOES # @jaohenry23 custom package
 
@@ -23,12 +24,20 @@ After importing, we must download the GOES files given a start and end time, as 
 the Satellite and channel(s) we want. Optionally, we can define a path to save the data to.
 '''
 
-start_time, end_time = '20221118-135000', '20221118-140100'
+start_time = datetime(2022, 11, 18, 13, 50)
+end_time = datetime(2022, 11, 18, 14, 9)
 savepath = ''
-GOES_files = STORMY.download_GOES('goes16', 'ABI-L2-CMIPF',
-                      DateTimeIni=start_time, DateTimeFin=end_time,
-                      channel=['13'], path_out=savepath)
 
+downloader = STORMY_downloader(data_root='')
+result = downloader.download_GOES(
+    satellite='goes16',
+    product='ABI-L2-CMIPF',
+    start_time=datetime(2022, 11, 18, 13, 50),
+    end_time=datetime(2022, 11, 18, 14, 9),
+    channels=['13']
+)
+
+GOES_files = result.files
 '''
 Now we can read the data and define our viewing extent
 '''

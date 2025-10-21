@@ -13,17 +13,28 @@ import numpy as np
 import cartopy.crs as crs
 import matplotlib.pyplot as plt
 import STORMY
+from STORMY import STORMY_downloader
 
 '''
-After importing, we must download the LMA files given a time and a buffer, which will search
-for LMA files time +- buffer. Optionally, we can define a path to save the data to.
+After importing, we must download the LMA files given a start time and and end time. 
+The default setting is a frequency of 10 minutes for each file
+since that is how often LMA files are generated with the data.
+Optionally, we can define a path to save the data to.
 '''
 
-time = datetime(2022, 11, 18, 23,55)
-tbuffer = 1800 # seconds
+start_time = datetime(2022, 11, 19, 0, 0)
+end_time = datetime(2022, 11, 19, 0, 30)
 savepath = ""
 
-LMA_files = STORMY.download_LMA(time,tbuffer=tbuffer, path_out=savepath)
+#LMA_files = STORMY.download_LMA(time,tbuffer=tbuffer, path_out=savepath)
+
+downloader = STORMY_downloader(data_root='')
+result = downloader.download_LMA(
+    start_time=start_time,
+    end_time=end_time,
+)
+
+LMA_files = result.files
 
 '''
 Before reading the data, we must first define the criteria of the LMA data. That is,
@@ -69,11 +80,10 @@ for filename in LMA_files:
 
 '''
 With our completed DataFrames we can now start to create our filter. We are mainly
-interested in filtering the flash events given our time, time buffer, max chi^2 and
+interested in filtering the flash events given our start time, end time, max chi^2 and
 minimum stations
 '''
-start_time = time
-end_time = start_time + timedelta(seconds=tbuffer)
+
 selection = (
     (flash_events["datetime"] >= start_time) &
     (flash_events["datetime"] < end_time) &
@@ -128,8 +138,9 @@ The figure is now complete!! Lets create a suitable filename that we can use to 
 use it in the future. The figure will be saved using savepath, which you defined earlier.
 '''
 
-time_str = time.strftime("%Y-%m-%d_%H-%M-%S")
-filename = f"LMATUTORIAL_{time_str}.png"
+start_time_str = start_time.strftime("%Y%m%d%H%M")
+end_time_str = end_time.strftime("%Y%m%d%H%M")
+filename = f"LMATUTORIAL_{start_time_str}_{end_time_str}.png"
 plt.savefig(savepath + filename)
 plt.show()
 

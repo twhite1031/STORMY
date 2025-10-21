@@ -13,20 +13,27 @@ import cartopy.crs as crs
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import STORMY
+from STORMY import STORMY_downloader
 
 '''
 After importing, we must define which NWS radars you would like to use, path to
-store the WSR88D files and the time range (start and end) you'd like to grab. We
+store the WSR88D files and the time range (start and end) you'd like to grab. We will
+just grab the first file analysis.
 '''
 
 radar = 'KTYX'
-start_time, end_time = datetime(2022, 11, 18, 23,55), datetime(2022, 11, 19, 00, 30)
+start_time = datetime(2022, 11, 18, 23,55)
+end_time =  datetime(2022, 11, 19, 00, 30)
 savepath = ""
-WSR88D_path = ""
 
-WSR88D_files = STORMY.download_WSR88D(radar, DateTimeIni=start_time, DateTimeFin=end_time, path_out=WSR88D_path)
-print(WSR88D_files)
-WSR88D_file = WSR88D_files[0] # Grab the first file for plotting purposes
+downloader = STORMY_downloader(data_root='')
+result = downloader.download_WSR88D(
+    station=radar,
+    start_time=start_time,
+    end_time=end_time,
+)
+
+WSR88D_file = result.files[0]
 
 '''
 Now that we have the WSR88D files that fit our time range, we can begin to read the data.
