@@ -23,11 +23,11 @@ from botocore import UNSIGNED
 from botocore.config import Config
 import gzip
 import shutil
+import cdsapi
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 
 # ============================================================================
 # Exceptions
@@ -83,6 +83,10 @@ class DownloadResult:
     @property
     def success(self) -> bool:
         return self.failure_count == 0 and self.success_count > 0
+    
+    @property
+    def num_files(self) -> int:
+        return len(self.files)
 
 
 # ============================================================================
@@ -121,6 +125,7 @@ class DataDownloader(ABC):
 # Specific Downloaders
 # ============================================================================
 
+# Parts from GOES github
 class GOESDownloader(DataDownloader):
     """
     Download GOES satellite data from AWS.
@@ -138,29 +143,30 @@ class GOESDownloader(DataDownloader):
     """
     
     VALID_SATELLITES = {'goes16', 'goes17', 'goes18', 'goes19'}
-    # Taken from GOES github
+
+    # Static method for downloading a single file with retries and progress bar
     @staticmethod
     def download_file(URL, name_file, path_out, retries=10, backoff=0.2, size_format='Decimal', show_download_progress=True, overwrite_file=False):
 
-        StartTime = datetime.now()
+        StartTime = datetime.now() # Reference time for download duration
+        size = 0 # Reference size for download progress
 
         retries_config = Retry(total=retries, backoff_factor=backoff, status_forcelist=[500, 502, 503, 504])
-
         session = requests.Session()
         session.mount('http://', HTTPAdapter(max_retries=retries_config))
         session.mount('https://', HTTPAdapter(max_retries=retries_config))
+
         req = session.get(URL, stream=True)
-        #req = requests.get(URL, stream=True)
         total_size = int(req.headers['content-length'])
-        size = 0
+        
         if size_format == 'Binary':
             dsize = 1024*1024
         else:
             dsize = 1000*1000
 
-
         make_download = True
         output_path = Path(path_out) / name_file
+
         if output_path.exists():
             if output_path.stat().st_size == total_size:
                 if not overwrite_file:
@@ -184,6 +190,7 @@ class GOESDownloader(DataDownloader):
                             if size == total_size:
                                 #print('\n')
                                 print('  {} {:3.0f}% {:.1f}MB {}'.format(name_file,100.0*size/total_size, size/dsize, '{}m{}s'.format(round((datetime.now()-StartTime).seconds/60.0),(datetime.now()-StartTime).seconds%60) if (datetime.now()-StartTime).seconds>60 else '{}s'.format((datetime.now()-StartTime).seconds) ))
+    # Main download method
     def download(
         self,
         satellite: str,
@@ -215,10 +222,12 @@ class GOESDownloader(DataDownloader):
             InvalidParameterError: If parameters are invalid
             DataNotFoundError: If no data found
         """
+
         retries = kwargs.get("retries", 10)
         backoff = kwargs.get("backoff", 0.2)
         size_format = kwargs.get("size_format", "Decimal")
         show_download_progress = kwargs.get("show_download_progress", True)
+
         # Validate inputs
         if satellite.lower() not in self.VALID_SATELLITES:
             raise InvalidParameterError(
@@ -226,6 +235,7 @@ class GOESDownloader(DataDownloader):
                 f"Must be one of {self.VALID_SATELLITES}"
             )
         
+        # Handle mesoscale products, ensure proper format
         if product.endswith('M'):
             if domain not in ['M1', 'M2']:
                 raise InvalidParameterError(
@@ -244,7 +254,6 @@ class GOESDownloader(DataDownloader):
             raise InvalidParameterError(
                 f"ABI products require channels parameter"
             )
-        
         
         if product[:-1] in ['ABI-L1b-Rad', 'ABI-L2-CMIP']:
             if channels is None:
@@ -277,9 +286,6 @@ class GOESDownloader(DataDownloader):
             # Non-ABI products don’t need channels
             channel_list = None
 
-        
-        time_range = self._normalize_time_range(start_time, end_time)
-        
         # Implementation would go here
         downloaded_files = []
         success_count = 0
@@ -287,12 +293,14 @@ class GOESDownloader(DataDownloader):
         
         logger.info(
             f"Downloading {satellite} {product} from "
-            f"{time_range.start} to {time_range.end}"
+            f"{start_time} to {end_time}"
         )
 
+        # Set up time loop (hourly folders)
         DateTimeIniLoop = start_time.replace(minute=0)
         DateTimeFinLoop = end_time.replace(minute=0)+timedelta(minutes=60)
         time_range_loop = self._normalize_time_range(DateTimeIniLoop, DateTimeFinLoop,timedelta(hours=1))
+
         for time in time_range_loop: 
             DateTimeFolder = time.strftime('%Y/%j/%H/')
 
@@ -301,23 +309,40 @@ class GOESDownloader(DataDownloader):
             ListFiles = np.array(fs.ls(server+DateTimeFolder))
 
             for line in ListFiles:
-                NameOut = line.split('/')[-1]
+                NameOut = line.split('/')[-1] 
                 output_path = self.path_out / NameOut
+
                 if output_path.exists() and not overwrite_file:
                     logger.warning(f"File already exists — skipping: {NameOut}")
+                    success_count += 1
                     downloaded_files.append(output_path)
                     continue  # skip early, no print, no redundant work
+                
+                # Check if the we are using channels (for ABI products)
                 if product[:-1] in ['ABI-L1b-Rad','ABI-L2-CMIP']:
                     
                     ChannelFile = NameOut.split('_')[1][-2:]
                     DateTimeFile = datetime.strptime(NameOut[NameOut.find('_s')+2:NameOut.find('_e')-1], '%Y%j%H%M%S')
 
-                    if product2 in NameOut    and    ChannelFile in channel_list    and    start_time <= DateTimeFile <= end_time:
-                    
+                    try:
+                        if product2 in NameOut and ChannelFile in channel_list and start_time <= DateTimeFile <= end_time:
+                            url = f"https://noaa-{satellite}.s3.amazonaws.com{line[len('noaa-' + satellite):]}"
+                            self.download_file(
+                                url,
+                                NameOut,
+                                self.path_out,
+                                retries=retries,
+                                backoff=backoff,
+                                size_format=size_format,
+                                show_download_progress=show_download_progress,
+                                overwrite_file=overwrite_file
+                            )
+                            downloaded_files.append(output_path)
+                            success_count += 1
 
-                        #print(ChannelFile, DateTimeFile, NameOut)
-                        self.download_file('https://noaa-'+satellite+'.s3.amazonaws.com'+line[len('noaa-'+satellite):], NameOut, self.path_out, retries=retries, backoff=backoff, size_format=size_format, show_download_progress=show_download_progress, overwrite_file=overwrite_file)
-                        downloaded_files.append(output_path)
+                    except Exception as e:
+                        failure_count += 1
+                        logger.error(f"❌ Failed to download {NameOut}: {e}")
 
                 else:
                     DateTimeFile = datetime.strptime(NameOut[NameOut.find('_s')+2:NameOut.find('_e')-1], '%Y%j%H%M%S')
@@ -327,14 +352,12 @@ class GOESDownloader(DataDownloader):
                         self.download_file('https://noaa-'+satellite+'.s3.amazonaws.com'+line[len('noaa-'+satellite):], NameOut, self.path_out, retries=retries, backoff=backoff, size_format=size_format, show_download_progress=show_download_progress, overwrite_file=overwrite_file)
                         downloaded_files.append(output_path)
 
-        
         if not downloaded_files:
             raise DataNotFoundError(
                 f"No {satellite} {product} data found for specified time range"
             )
         
         total_size = sum(f.stat().st_size for f in downloaded_files) / (1024**2)
-        
         return DownloadResult(
             files=downloaded_files,
             success_count=success_count,
@@ -347,21 +370,22 @@ class WSR88DDownloader(DataDownloader):
     @staticmethod
     def download_file(URL, name_file, path_out, retries=10, backoff=0.2, size_format='Decimal', show_download_progress=True, overwrite_file=False):
 
-        StartTime = datetime.now()
+        StartTime = datetime.now() # Reference time for download duration
+        size = 0 # Reference size for download progress
 
         retries_config = Retry(total=retries, backoff_factor=backoff, status_forcelist=[500, 502, 503, 504])
-
         session = requests.Session()
         session.mount('http://', HTTPAdapter(max_retries=retries_config))
         session.mount('https://', HTTPAdapter(max_retries=retries_config))
         req = session.get(URL, stream=True)
-        #req = requests.get(URL, stream=True)
+        
         total_size = int(req.headers.get('content-length', 0))
-        size = 0
+        
         if size_format == 'Binary':
             dsize = 1024*1024
         else:
             dsize = 1000*1000
+
         make_download = True
         output_path = Path(path_out) / name_file
         if output_path.exists():
@@ -617,6 +641,7 @@ class NWSSoundingDownloader(DataDownloader):
         # Filename and full path
         name_file = f"nws_soundings_{start_time.strftime('%Y%m%d%H')}_{end_time.strftime('%Y%m%d%H')}_{'_'.join(stations)}.csv"
         base_url = self.base_url
+
         try:
             output_path = self._download_file( base_url, payload, name_file, self.path_out, overwrite_file=overwrite_file)
             downloaded_files.append(output_path)
@@ -689,6 +714,10 @@ class MRMSDownloader(DataDownloader):
         overwrite_file: bool = False,
         **kwargs,
     ) -> DownloadResult:
+        
+        logger.info(
+            f"Downloading MRMS {field} from {start_time} to {end_time}"
+        )
         # --- Setup AWS S3 (public access) ---
         s3 = boto3.client('s3', config=Config(signature_version=UNSIGNED))
         bucket = 'noaa-mrms-pds'
@@ -701,6 +730,7 @@ class MRMSDownloader(DataDownloader):
         downloaded_files = []
         success_count = 0
         failure_count = 0
+
         for page in pages:
             for obj in page.get('Contents', []):
                 key = obj['Key']
@@ -714,8 +744,15 @@ class MRMSDownloader(DataDownloader):
                     continue
 
                 name_file = f"{field}_{ftime:%Y%m%d%H%M%S}.grib2.gz"
+                output_path = Path(self.path_out) / name_file[:-3]  # remove .gz
 
-                # --- Download compressed file ---
+                # Check if file exists
+                if output_path.exists() and not overwrite_file:
+                    logger.warning(f"  {name_file} already exists.")
+                    downloaded_files.append(output_path)
+                    continue
+
+                # Download compressed file 
                 try:
                     downloaded_gz_path = self.download_file(s3, bucket, key, name_file, self.path_out, overwrite_file=overwrite_file)
                     success_count += 1
@@ -724,14 +761,12 @@ class MRMSDownloader(DataDownloader):
                     failure_count += 1
                     continue
                
-
                 # --- Unzip ---
-                output_path = Path(self.path_out) / name_file[:-3]  # remove .gz
                 with gzip.open(downloaded_gz_path, 'rb') as gz:
                     with open(output_path, 'wb') as out:
                         shutil.copyfileobj(gz, out)
                 downloaded_gz_path.unlink()  # remove .gz
-
+                
                 print(f"✅ Downloaded & unzipped: {name_file}")
                 downloaded_files.append(output_path)
 
@@ -743,6 +778,339 @@ class MRMSDownloader(DataDownloader):
         total_size = sum(f.stat().st_size for f in downloaded_files) / (1024**2)
         return DownloadResult(downloaded_files, success_count, failure_count, total_size)
     
+class ASOSDownloader(DataDownloader):
+    """Download ASOS data."""
+
+    base_url = 'https://mesonet.agron.iastate.edu/cgi-bin/request/asos.py'
+
+    @staticmethod
+    def _download_file(url, payload,name_file, path_out, overwrite_file=False):
+        """Stream download with simple progress bar."""
+        output_path = Path(path_out) /  name_file
+        start_time = datetime.now()
+        
+        # Check if file exists
+        if output_path.exists() and not overwrite_file:
+            logger.warning(f"  {name_file} already exists.")
+            return output_path
+
+        # Stream request
+        with requests.get(url, params=payload, stream=True, timeout=60) as r:
+            r.raise_for_status()
+            total = int(r.headers.get("content-length", 0))
+            size = 0
+            with open(output_path, "wb") as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    if not chunk:
+                        continue
+                    f.write(chunk)
+                    size += len(chunk)
+
+                    # --- progress bar ---
+                    elapsed = datetime.now() - start_time
+                    pct = (size / total * 100) if total > 0 else 0
+                    mb = size / 1_000_000
+                    eta = f"{elapsed.seconds//60}m{elapsed.seconds%60}s"
+                    print(f"  {name_file} {pct:3.0f}% {mb:.1f}MB {eta}", end="\r")
+
+        print(f"\n✅ {name_file} downloaded ({mb:.1f}MB)")
+        return output_path
+
+    def download(
+        self,
+        start_time: datetime,
+        end_time: Optional[datetime] = None,
+        *,
+        overwrite_file: bool = False,
+        **kwargs,
+    ) -> DownloadResult:
+        
+        states = kwargs.get("states")
+        stations = kwargs.get("stations")
+
+        # Validation
+        if (states and stations) or (not states and not stations):
+            raise InvalidParameterError("Provide either `states` or `stations`, but not both.")
+        
+        id_str = '_'.join(stations) if stations else '_'.join(states)
+        name_file = f"ASOS_{start_time:%Y%m%d%H}_{end_time:%Y%m%d%H}_{id_str}.csv"
+
+        downloaded_files = []
+        success_count = 0
+        failure_count = 0
+        if stations:
+            logger.info(
+                f"Downloading {stations} ASOS data from {start_time} to {end_time}"
+            )
+        elif states:
+            logger.info(
+                f"Downloading ASOS data for states {states} from {start_time} to {end_time}"
+            )
+
+        base_payload = {
+            'data': 'tmpf,dwpf,sknt,drct,mslp,gust,p01i,skyc1,skyc2,skyc3,skyc4',
+            'year1': start_time.year, 'month1': start_time.month, 'day1': start_time.day,
+            'hour1': start_time.hour, 'minute1': start_time.minute,
+            'year2': end_time.year, 'month2': end_time.month, 'day2': end_time.day,
+            'hour2': end_time.hour, 'minute2': end_time.minute,
+            'tz': 'Etc/UTC',
+            'format': 'csv',
+            'latlon': True,
+        }
+
+        if stations:
+            payload = {**base_payload, 'station': stations}
+        elif states:
+            all_stations = []
+            # Loop through each state to get station list
+            for state in states:
+                url = f"https://mesonet.agron.iastate.edu/geojson/network.py?network={state}_ASOS"
+                response = requests.get(url)
+                if response.status_code == 200:
+                    data_json = response.json()
+                    for feature in data_json["features"]:
+                        props = feature["properties"]
+                        all_stations.append(props["sid"])
+                else:
+                    logger.warning(f"⚠️ Failed to fetch ASOS list for {state}")
+
+            payload = {**base_payload, "station": all_stations}
+
+        # Download file with new paylod
+        try:
+            output_path = self._download_file(self.base_url, payload, name_file, self.path_out, overwrite_file=overwrite_file)
+            downloaded_files.append(output_path)
+            success_count += 1
+        except Exception as e:
+            failure_count += 1
+            logger.error(f"❌ Failed to download {name_file}: {e}")
+
+        if not downloaded_files:
+            raise DataNotFoundError(f"No ASOS data found for specified time range")
+
+        total_size = sum(f.stat().st_size for f in downloaded_files) / (1024**2)
+        return DownloadResult(downloaded_files, success_count, failure_count, total_size)
+    
+class ERA5SingleDownloader(DataDownloader):
+    """Download ERA5 single-level hourly GRIB data from the Copernicus CDS."""
+
+    dataset = "reanalysis-era5-single-levels"
+
+    def download(
+        self,
+        variables: list[str],
+        start_time: datetime,
+        end_time: Optional[datetime] = None,
+        *,
+        area: Optional[list[float]] = None,
+        overwrite_file: bool = False,
+        **kwargs,
+    ) -> DownloadResult:
+        
+        if area is None:
+            # Global coverage (N, W, S, E)
+            area = [90, -180, -90, 180]
+            logger.info("No area provided — defaulting to global domain.")
+
+        # --- Sanity checks ---
+        assert isinstance(variables, list) and variables, "variables must be a non-empty list"
+        if end_time is None:
+            end_time = start_time
+
+        # Generate the full list of dates in the requested range using an hour increment
+        dates = []
+        date_cursor = start_time
+        while date_cursor <= end_time:
+            dates.append(date_cursor)
+            date_cursor += timedelta(hours=1)
+
+        # Generate unique years, months, days using sorted sets
+        years = sorted({d.year for d in dates})
+        months = sorted({f"{d.month:02d}" for d in dates})
+        days = sorted({f"{d.day:02d}" for d in dates})
+
+        # Handle if multiple days are requested, we need all 24 hours
+        if len(days) > 1:
+            hours = [f"{h:02d}:00" for h in range(24)]
+        else:
+            # Single day: only include the hours that actually appear
+            hours = sorted({f"{d.hour:02d}:00" for d in dates})
+
+        downloaded_files = []
+        success_count = 0
+        failure_count = 0
+        
+        # Check if file exists
+        if target_path.exists() and not overwrite_file:
+            logger.info(f"File already exists: {target_path}")
+            downloaded_files.append(target_path)
+            return DownloadResult([target_path], 1, 0, target_path.stat().st_size / (1024**2))
+        
+        logger.info(
+            f"Downloading ERA5 Single {variables} from {start_time} to {end_time}"
+        )
+
+        # --- Step 2: Download day by day ---
+        c = cdsapi.Client()
+
+        filename = f"ERA5S_{start_time:%Y%m%d}_{end_time:%Y%m%d}.grib"
+        target_path = Path(self.path_out) / filename
+
+        if target_path.exists() and not overwrite_file:
+            logger.info(f"File already exists: {target_path}")
+            downloaded_files.append(target_path)
+            return DownloadResult([target_path], 1, 0, target_path.stat().st_size / (1024**2))
+
+        try:
+            logger.info(f"Requesting ERA5 data from {start_time:%Y-%m-%d %H:%M} to {end_time:%Y-%m-%d %H:%M}...")
+            request = {
+                "product_type": "reanalysis",
+                "format": kwargs.get("format", "grib"),  #  Check kwargs for format, otherwise default to 'grib'
+                "variable": variables,
+                "year": years,
+                "month": months,
+                "day": days,
+                "time": hours,
+                "area": area,
+            }
+
+            # Merge user overrides
+            request.update(kwargs)
+
+            c.retrieve(self.dataset, request, str(target_path))
+            print(f"✅ Downloaded: {target_path}")
+
+            downloaded_files.append(target_path)
+            success_count += 1
+
+        except Exception as e:
+            logger.error(f"❌ Failed to download ERA5 data: {e}")
+            failure_count += 1
+
+        # --- Final report ---
+        if not downloaded_files:
+            raise DataNotFoundError(f"No ERA5 single-level data found for variables={variables}")
+
+        total_size = sum(f.stat().st_size for f in downloaded_files) / (1024 ** 2)
+        return DownloadResult(downloaded_files, success_count, failure_count, total_size)
+    
+class ERA5PressureDownloader(DataDownloader):
+    """Download ERA5 pressure-level hourly GRIB data from the Copernicus CDS."""
+
+    dataset = "reanalysis-era5-pressure-levels"
+
+    def download(
+        self,
+        variables: list[str],
+        start_time: datetime,
+        end_time: Optional[datetime] = None,
+        *,
+        area: Optional[list[float]] = None,
+        pressure_levels: Optional[list[int]] = None,
+        overwrite_file: bool = False,
+        **kwargs,
+    ) -> DownloadResult:
+        
+        if pressure_levels is None:
+            pressure_levels = [
+                "1", "2", "3",
+                "5", "7", "10",
+                "20", "30", "50",
+                "70", "100", "125",
+                "150", "175", "200",
+                "225", "250", "300",
+                "350", "400", "450",
+                "500", "550", "600",
+                "650", "700", "750",
+                "775", "800", "825",
+                "850", "875", "900",
+                "925", "950", "975",
+                "1000"
+                ]
+            
+        if area is None:
+            # Global coverage (N, W, S, E)
+            area = [90, -180, -90, 180]
+            logger.info("No area provided — defaulting to global domain.")
+
+        # --- Sanity checks ---
+        assert isinstance(variables, list) and variables, "variables must be a non-empty list"
+        if end_time is None:
+            end_time = start_time
+
+        # Generate the full list of dates in the requested range using an hour increment
+        dates = []
+        date_cursor = start_time
+        while date_cursor <= end_time:
+            dates.append(date_cursor)
+            date_cursor += timedelta(hours=1)
+
+        # Generate unique years, months, days using sorted sets
+
+        years = sorted({d.year for d in dates})
+        months = sorted({f"{d.month:02d}" for d in dates})
+        days = sorted({f"{d.day:02d}" for d in dates})
+
+        # Handle if multiple days are requested, we need all 24 hours
+        if len(days) > 1:
+            hours = [f"{h:02d}:00" for h in range(24)]
+        else:
+            # Single day: only include the hours that actually appear
+            hours = sorted({f"{d.hour:02d}:00" for d in dates})
+
+        # Create a filename and path for the output file
+        filename = f"ERA5P_{start_time:%Y%m%d}_{end_time:%Y%m%d}.grib"
+        target_path = Path(self.path_out) / filename
+        
+        downloaded_files = []
+        success_count = 0
+        failure_count = 0
+
+        # Check if file exists
+        if target_path.exists() and not overwrite_file:
+            logger.info(f"File already exists: {target_path}")
+            downloaded_files.append(target_path)
+            return DownloadResult([target_path], 1, 0, target_path.stat().st_size / (1024**2))
+        
+        logger.info(
+            f"Downloading ERA5 Pressure {variables} from {start_time} to {end_time}"
+        )
+        # --- Step 2: Download day by day ---
+        c = cdsapi.Client()
+
+        try:
+            logger.info(f"Requesting ERA5 data from {start_time:%Y-%m-%d %H:%M} to {end_time:%Y-%m-%d %H:%M}...")
+            request = {
+                "product_type": "reanalysis",
+                "format": kwargs.get("format", "grib"),  #  Check kwargs for format, otherwise default to 'grib'
+                "variable": variables,
+                "year": years,
+                "month": months,
+                "day": days,
+                "time": hours,
+                "pressure_level": pressure_levels,
+                "area": area,
+            }
+
+            # Merge user overrides
+            request.update(kwargs)
+
+            c.retrieve(self.dataset, request, str(target_path))
+            logger.info(f"✅ Downloaded: {target_path}")
+
+            downloaded_files.append(target_path)
+            success_count += 1
+
+        except Exception as e:
+            logger.error(f"❌ Failed to download ERA5 data: {e}")
+            failure_count += 1
+
+        # --- Final report ---
+        if not downloaded_files:
+            raise DataNotFoundError(f"No ERA5 single-level data found for variables={variables}")
+
+        total_size = sum(f.stat().st_size for f in downloaded_files) / (1024 ** 2)
+        return DownloadResult(downloaded_files, success_count, failure_count, total_size)
 # ============================================================================
 # High-level API
 # ============================================================================
@@ -786,7 +1154,7 @@ class STORMY_downloader:
         downloader = LMADownloader(path_out)
         return downloader.download(**kwargs)
     
-    def download_NWS_SOUNDING(self, **kwargs) -> DownloadResult:
+    def download_NWSSOUNDING(self, **kwargs) -> DownloadResult:
         """Download NWS Radiosonde data"""
         path_out = self.data_root / 'NWS_SOUNDING_files'
         downloader = NWSSoundingDownloader(path_out)
@@ -798,17 +1166,24 @@ class STORMY_downloader:
         downloader = MRMSDownloader(path_out)
         return downloader.download(**kwargs)
     
-    def download_ERA5_SINGLE(self, **kwargs) -> DownloadResult:
-        """Download ERA5 single-level data"""
-        path_out = self.data_root / 'ERA5_SINGLE_files'
-        downloader = ERA5SingleDownloader(path_out)
-        return downloader.download(**kwargs)
-    
     def download_ASOS(self, **kwargs) -> DownloadResult:
         """Download ASOS data"""
         path_out = self.data_root / 'ASOS_files'
         downloader = ASOSDownloader(path_out)
         return downloader.download(**kwargs)
+    
+    def download_ERA5SINGLE(self, **kwargs) -> DownloadResult:
+        """Download ERA5 single-level data"""
+        path_out = self.data_root / 'ERA5_SINGLE_files'
+        downloader = ERA5SingleDownloader(path_out)
+        return downloader.download(**kwargs)
+
+    def download_ERA5PRESSURE(self, **kwargs) -> DownloadResult:
+        """Download ERA5 pressure-level data"""
+        path_out = self.data_root / 'ERA5_PRESSURE_files'
+        downloader = ERA5PressureDownloader(path_out)
+        return downloader.download(**kwargs)
+
 
 # ============================================================================
 # Backward-compatible functions

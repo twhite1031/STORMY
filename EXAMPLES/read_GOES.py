@@ -38,6 +38,7 @@ result = downloader.download_GOES(
 )
 
 GOES_files = result.files
+
 '''
 Now we can read the data and define our viewing extent
 '''

@@ -4,7 +4,7 @@ operated primarily by NOAA’s National Weather Service, the Federal Aviation Ad
 and the Department of Defense. These stations are equipped with a suite of sensors to measure key 
 surface weather parameters (e.g., temperature, wind speed and direction, precipitation, and visibility). 
 This tutorial will work with text-based METAR observation files (.csv) obtained from the ASOS network.
- We begin by importing the necessary packages.
+We begin by importing the necessary packages.
 '''
 
 from datetime import datetime
@@ -16,6 +16,7 @@ import cartopy.crs as crs
 import numpy as np
 import pandas as pd
 import STORMY
+from STORMY import STORMY_downloader
 
 '''
 After importing, we must download the ASOS files given states and a start and end time.
@@ -24,21 +25,22 @@ Optionally, we can define a path to save the data to.
 
 states = ["NY"]
 start_time, end_time = datetime(2022,11,18,19,50), datetime(2022,11,18,20,10)
-ASOS_path = ""
 savepath = ""
 
-ASOS_file = STORMY.download_ASOS_STATES(
-    states=["NY"],
+downloader = STORMY_downloader(data_root='')
+result = downloader.download_ASOS(
     start_time=start_time,
     end_time=end_time,
-    path_out=ASOS_path
-    )
+    states=states,
+)
+ASOS_file = result.files[0]
 
 '''
-Now we can read the data, defined by the headers on line 1 (index 0)
+Now we can read the data. Note that we need to let pandas know that lines with
+# are comments and should be skipped, as these lines contain metadata about the file.
 '''
 
-df = pd.read_csv(ASOS_file)
+df = pd.read_csv(ASOS_file,comment="#")
 
 '''
 As with many forms of meteorological data, some quality control (QC)

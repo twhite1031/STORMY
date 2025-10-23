@@ -22,10 +22,8 @@ stations = ['KBUF']
 start_time, end_time = datetime(2022, 11, 18, 23,55), datetime(2022, 11, 19, 00, 30)
 savepath = ""
 
-#SOUNDING_file = STORMY.download_NWS_SOUNDING(start_time=start_time,end_time=end_time,stations=stations,path_out=savepath)
-
 downloader = STORMY_downloader(data_root='')
-result = downloader.download_NWS_SOUNDING(stations=stations,
+result = downloader.download_NWSSOUNDING(stations=stations,
     start_time=start_time,
     end_time=end_time,
 )

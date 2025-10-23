@@ -29,11 +29,7 @@ result = downloader.download_MRMS(field=field,
     start_time=start_time,
     end_time=end_time,
 )
-print(result.files)
 MRMS_file = result.files[0]
-
-#MRMS_files = STORMY.download_MRMS(field= field,start_time=start_time,end_time=end_time,path_out=savepath)
-#MRMS_file = MRMS_files[0] # Grab the first file for plotting purposes
 
 '''
 Now we can read the data and see what time the data is valid for

@@ -26,8 +26,6 @@ start_time = datetime(2022, 11, 19, 0, 0)
 end_time = datetime(2022, 11, 19, 0, 30)
 savepath = ""
 
-#LMA_files = STORMY.download_LMA(time,tbuffer=tbuffer, path_out=savepath)
-
 downloader = STORMY_downloader(data_root='')
 result = downloader.download_LMA(
     start_time=start_time,
