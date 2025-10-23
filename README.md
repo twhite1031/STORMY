@@ -1,10 +1,10 @@
 # STORMY
 
-Python package and scripts to manipulate and download observed and modeled meteorological data for research
+Scientific Tools for Observational and Research MeteorologY
 <br><br>
 
 # Version
-1.1 - STORMY is updated frequently, re-install for the latest version.
+1.2 - STORMY is updated frequently, re-install for the latest version.
 <br><br>
 # Environment Installation
 This project relies on several Python packages, so a Conda environment is provided for convenience.
@@ -14,7 +14,7 @@ You will need miniconda or Anaconda to create an environment.
 <br><br>
 There are a plethora of packages which enable use of STORMY.
 A conda environment (.yml) is provided [here](https://github.com/twhite1031/STORMY/tree/main/envs)
-
+Note: If the conda env does not match STORMY version, use most recent .yml file
 <br><br>
 Install for Linux using:
 <br><br>

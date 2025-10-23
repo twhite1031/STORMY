@@ -1,3 +1,10 @@
+# Version 1.2 - October 22nd, 2025
+- New Windows conda environment compatible for 1.1 and 1.2
+- New STORMY_downloader class
+  - Old functions deprecated (but still functional)
+- Added ERA5 Pressure levels to downloader
+- Added ERA5 Single and Pressure levels examples in EXAMPLES directory
+
 # Version 1.1 - August 11th, 2025
 - Rebranded conda environment useWRF to useSTORMY
 - Created useSTORMY 1.1 env
