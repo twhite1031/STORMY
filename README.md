@@ -13,7 +13,7 @@ Refer to [this](https://www.anaconda.com/docs/getting-started/miniconda/main) li
 You will need miniconda or Anaconda to create an environment.
 <br><br>
 There are a plethora of packages which enable use of STORMY.
-A conda environment (.yml) is provided [here](https://github.com/twhite1031/STORMY/tree/main/envs)
+A conda environment (.yml) is provided [here](https://github.com/twhite1031/STORMY/tree/main/envs) <br>
 Note: If the conda env does not match STORMY version, use most recent .yml file
 <br><br>
 Install for Linux using:
