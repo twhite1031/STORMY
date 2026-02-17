@@ -2,48 +2,54 @@ import STORMY
 from STORMY import STORMY_downloader
 from datetime import datetime
 
-'''
-STORMY.download_GOES('goes16', 'ABI-L2-CMIPF',
-                      DateTimeIni='20221118-135000', DateTimeFin='20221118-140100', 
-                      channel=['13'], path_out='/data2/white/DATA/MISC/SATELLITE/')
+downloader = STORMY_downloader(data_root=r'C:\Users\thomas.james.white\Documents')
 
-STORMY.download_WSR88D("KTYX", DateTimeIni=datetime(2022,11,18,20,00), DateTimeFin=datetime(2022,11,18,20,10),path_out='/data2/white/MISC/WSR88D/LVL2/')
+GOES_result = downloader.download_GOES(
+    satellite='goes16',
+    product='ABI-L2-CMIPF',
+    start_time=datetime(2022, 11, 18, 13, 50),
+    end_time=datetime(2022, 11, 18, 14, 10),
+    channels=['13']
+)
 
-STORMY.download_LMA(datetime(2022,11,18,20,00),tbuffer=1800, path_out='/data2/white/MISC/LMA/')
+WSR88D_result = downloader.download_WSR88D(
+    station="KTYX",
+    start_time=datetime(2022, 11, 18, 20,00),
+    end_time=datetime(2022, 11, 18, 20,10),
+)
 
-STORMY.download_ASOS_STATES(
+
+#LMA_result = downloader.download_LMA(
+#    start_time=datetime(2022, 11, 18, 20, 0),
+#   end_time=datetime(2022, 11, 18, 20, 30),
+#    path_out=r'C:\Users\thomas.james.white\Documents\LMA_data'
+#)
+
+ASOS_result = downloader.download_ASOS(
     states=["IA"],
     start_time=datetime(2022, 11, 18, 20, 0),
     end_time=datetime(2022, 11, 18, 20, 10),
-    path_out='/data2/white/DATA/MISC/ASOS/'
 )
 
-STORMY.download_MRMS(
+MRMS_result = downloader.download_MRMS(
     field='MergedReflectivityQCComposite_00.50',
     start_time=datetime(2022, 11, 18, 13, 50),
-    end_time=datetime(2022,11,18,14,5),
-    path_out='/data2/white/DATA/MISC/MRMS/'
+    end_time=datetime(2022, 11, 18, 14, 5),
 )
-
-STORMY.download_ERA5_SINGLE(
+ERA5_result = downloader.download_ERA5SINGLE(
     start_time=datetime(2023, 1, 7, 18),
     end_time=datetime(2023, 1, 7, 19),
     variables=['2m_temperature', 'total_precipitation'],
     area=[22, -70, 20, -60],  # North Americals
-    path_out='/data2/white/DATA/MISC/ERA5/'
 )
 
-
-STORMY.download_NWS_SOUNDING(
+SOUNDING_result = downloader.download_NWSSOUNDING(
     start_time=datetime(2023, 1, 7, 18),
     end_time=datetime(2023, 1, 7, 19),
     stations=['KBUF'],
-    path_out='/data2/white/DATA/MISC/SOUNDINGS/'
 )
 
-'''
-downloader = STORMY_downloader(data_root=r'C:\Users\thomas.james.white\Documents')
-result = downloader.download_SENTINEL(path_out='',
+result = downloader.download_SENTINEL(
     bands=["rendered_preview"],
     start_time=datetime(2025, 7, 1),
     end_time=datetime(2025, 7, 31),

@@ -100,7 +100,7 @@ class DataDownloader(ABC):
     
     def __init__(self, path_out: Union[str, Path] = '.'):
         self.path_out = Path(path_out)
-        self.path_out.mkdir(parents=True, exist_ok=True)
+        self.path_out.mkdir(parents=True, exist_ok=True) # Create output directory if it doesn't exist
     
     @abstractmethod
     def download(
@@ -941,13 +941,7 @@ class ERA5SingleDownloader(DataDownloader):
         downloaded_files = []
         success_count = 0
         failure_count = 0
-        
-        # Check if file exists
-        if target_path.exists() and not overwrite_file:
-            logger.info(f"File already exists: {target_path}")
-            downloaded_files.append(target_path)
-            return DownloadResult([target_path], 1, 0, target_path.stat().st_size / (1024**2))
-        
+          
         logger.info(
             f"Downloading ERA5 Single {variables} from {start_time} to {end_time}"
         )
@@ -967,7 +961,7 @@ class ERA5SingleDownloader(DataDownloader):
             logger.info(f"Requesting ERA5 data from {start_time:%Y-%m-%d %H:%M} to {end_time:%Y-%m-%d %H:%M}...")
             request = {
                 "product_type": "reanalysis",
-                "format": kwargs.get("format", "grib"),  #  Check kwargs for format, otherwise default to 'grib'
+                "data_format": kwargs.get("data_format", "grib"),  #  Check kwargs for format, otherwise default to 'grib'
                 "variable": variables,
                 "year": years,
                 "month": months,
@@ -975,8 +969,10 @@ class ERA5SingleDownloader(DataDownloader):
                 "time": hours,
                 "area": area,
             }
-
+            
+            # !!! TEMP SOLUTION TO REMOVE path_out from KWARGS !!!
             # Merge user overrides
+            kwargs.pop("path_out", None)  # Remove path_out if it exists in kwargs
             request.update(kwargs)
 
             c.retrieve(self.dataset, request, str(target_path))

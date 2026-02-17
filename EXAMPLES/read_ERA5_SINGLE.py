@@ -14,7 +14,7 @@ import cartopy.crs as crs
 import matplotlib.pyplot as plt
 import STORMY
 from STORMY import STORMY_downloader
-
+#import cfgrib
 '''
 After importing, we must download the ERA5 Single files given a start and end time, as well as
 the variables and area we want. Optionally, we can define a path to save the data to.
@@ -35,8 +35,9 @@ result = downloader.download_ERA5SINGLE(
     area=area,
 )
 
-ERA5_files = result.files
-ERA5_file = ERA5_files[0] # Grab the first file to plot
+#ERA5_files = result.files
+ERA5_file = r'C:\Users\thomas.james.white\Documents\ERA5_SINGLE_files\ERA5S_20230107_20230107.grib'
+#ERA5_file = ERA5_files[0] # Grab the first file to plot
 
 '''
 Now we can use xarray to read in the grib file we just downloaded that we can read the data in using xarray. 
@@ -61,7 +62,7 @@ for the extent.
 '''
 
 plot_time = datetime(2022, 11, 18, 14, 0)
-t2m = ds['t2m'].sel(time=plot_time) - 273.15  # Convert from Kelvin to Celsius
+t2m = ds['t2m'].sel(time=plot_time, method='nearest') - 273.15  # Convert from Kelvin to Celsius
 lat = ds["latitude"].values
 lon = ds["longitude"].values
 
@@ -113,7 +114,7 @@ ax.set_extent([lon.min(), lon.max(), lat.min(), lat.max()], crs=crs.PlateCarree(
 Next we grab the raw 2m temperature values
 '''
 
-t2m = ds["t2m"].sel(time=plot_time).values - 273.15  # 2D (lat, lon)
+t2m = ds["t2m"].sel(time=plot_time, method='nearest').values - 273.15  # 2D (lat, lon)
 
 '''
 Same process for adding map features
