@@ -24,6 +24,8 @@ from botocore.config import Config
 import gzip
 import shutil
 import cdsapi
+from pystac_client import Client
+import planetary_computer as pc
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -1111,6 +1113,146 @@ class ERA5PressureDownloader(DataDownloader):
 
         total_size = sum(f.stat().st_size for f in downloaded_files) / (1024 ** 2)
         return DownloadResult(downloaded_files, success_count, failure_count, total_size)
+    
+class Sentinel2Downloader(DataDownloader):
+    """
+    Download selected Sentinel-2 L2A bands (COGs) using a STAC API.
+
+    Default STAC endpoint: Microsoft Planetary Computer STAC API. :contentReference[oaicite:3]{index=3}
+    Collection: sentinel-2-l2a. :contentReference[oaicite:4]{index=4}
+    """
+
+    stac_url = "https://planetarycomputer.microsoft.com/api/stac/v1"
+    collection = "sentinel-2-l2a"
+
+    def download(
+        self,
+        bands: list[str],
+        start_time: datetime,
+        end_time: Optional[datetime] = None,
+        *,
+        bbox: Optional[list[float]] = None,        # [W, S, E, N]
+        cloud_cover_lt: float = 20.0,
+        max_items: int = 50,
+        overwrite_file: bool = False,
+        per_item_subdir: bool = True,
+        timeout_s: int = 180,
+        **kwargs,
+    ) -> DownloadResult:
+        """
+        Parameters
+        ----------
+        bands : list[str]
+            STAC asset keys to download, commonly: B02, B03, B04, B08, SCL, etc.
+        bbox : list[float], optional
+            [west, south, east, north] in lon/lat.
+        cloud_cover_lt : float
+            Cloud filter using eo:cloud_cover. (Not perfect, but useful.)
+        max_items : int
+            Limit number of scenes returned/downloaded.
+        per_item_subdir : bool
+            If True, write files under <path_out>/<item_id>/...
+        """
+
+        if end_time is None:
+            end_time = start_time
+
+        assert isinstance(bands, list) and bands, "bands must be a non-empty list"
+
+        # If no bbox is provided, you can still search by time,
+        # but Sentinel-2 will return a lot of scenes; strongly prefer bbox.
+        if bbox is None:
+            raise ValueError("bbox is required for practical Sentinel-2 searches (format: [W, S, E, N]).")
+
+        # STAC search uses RFC3339 interval like "YYYY-MM-DDTHH:MM:SSZ/YYYY..."
+        # We'll use inclusive-ish range with 'Z' suffix.
+        time_range = f"{start_time.isoformat()}Z/{end_time.isoformat()}Z"
+
+        # Open STAC catalog; Planetary Computer assets require signing.
+        client = Client.open(self.stac_url, modifier=pc.sign_inplace)
+
+        search = client.search(
+            collections=[self.collection],
+            bbox=bbox,
+            datetime=time_range,
+            query={"eo:cloud_cover": {"lt": cloud_cover_lt}},
+            max_items=max_items
+        )
+
+        items = list(search.get_items())
+        if not items:
+            raise DataNotFoundError(
+                f"No Sentinel-2 items found for bbox={bbox}, time={time_range}, cloud<{cloud_cover_lt}"
+            )
+
+        downloaded_files: list[Path] = []
+        success_count = 0
+        failure_count = 0
+
+        for item in items:
+            # Ensure URLs are signed (modifier should have done this; this is a safe extra step).
+            pc.sign_inplace(item)
+
+            item_dir = self.path_out / item.id if per_item_subdir else self.path_out
+            item_dir.mkdir(parents=True, exist_ok=True)
+
+            for band in bands:
+                if band not in item.assets:
+                    # Helpful when someone uses "B8" instead of "B08", etc.
+                    available = list(item.assets.keys())
+                    raise KeyError(f"Band/asset '{band}' not in item assets. Example keys: {available[:25]}")
+
+                href = item.assets[band].href
+
+                # Most MPC Sentinel-2 assets are Cloud-Optimized GeoTIFFs; keep extension from href.
+                # If href ends in ".tif", you'll get GeoTIFF.
+                ext = Path(href.split("?")[0]).suffix or ".tif"
+                out_path = item_dir / f"{item.id}_{band}{ext}"
+
+                if out_path.exists() and not overwrite_file:
+                    downloaded_files.append(out_path)
+                    success_count += 1
+                    continue
+
+                try:
+                    self._stream_download(href, out_path, timeout_s=timeout_s, item_id=item.id)
+                    downloaded_files.append(out_path)
+                    success_count += 1
+                except Exception as e:
+                    failure_count += 1
+                    print(f"❌ Failed to download {band} for item {item.id}: {e}")
+
+        total_size_mb = sum(p.stat().st_size for p in downloaded_files if p.exists()) / (1024**2)
+        return DownloadResult(downloaded_files, success_count, failure_count, total_size_mb)
+
+    @staticmethod
+    def _stream_download(url: str, out_path: Path, *, timeout_s: int = 180,item_id:str) -> None:
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Split connect/read timeouts for better behavior
+        timeout = (20, timeout_s)
+
+        with requests.get(url, stream=True, timeout=timeout) as r:
+            r.raise_for_status()
+            total = int(r.headers.get("content-length", 0))
+            size = 0
+            start_time = datetime.now()
+            # Write content to disk
+            with open(out_path, "wb") as f:
+                for chunk in r.iter_content(chunk_size=1024 * 1024):
+                    if chunk:  # filter out keep-alives
+                        f.write(chunk)
+                        size += len(chunk)
+
+                        # --- progress bar ---
+                        elapsed = datetime.now() - start_time
+                        pct = (size / total * 100) if total > 0 else 0
+                        mb = size / 1_000_000
+                        eta = f"{elapsed.seconds//60}m{elapsed.seconds%60}s"
+                        print(f"  {item_id} {pct:3.0f}% {mb:.1f}MB {eta}", end="\r")
+
+                print(f"\n✅ {item_id} downloaded ({mb:.1f}MB)")
+
 # ============================================================================
 # High-level API
 # ============================================================================
@@ -1182,6 +1324,12 @@ class STORMY_downloader:
         """Download ERA5 pressure-level data"""
         path_out = self.data_root / 'ERA5_PRESSURE_files'
         downloader = ERA5PressureDownloader(path_out)
+        return downloader.download(**kwargs)
+    
+    def download_SENTINEL(self, **kwargs) -> DownloadResult:
+        """Download Sentinel satellite data"""
+        path_out = self.data_root / 'SENTINEL_files'
+        downloader = Sentinel2Downloader(path_out)
         return downloader.download(**kwargs)
 
 
