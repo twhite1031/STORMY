@@ -155,24 +155,13 @@ class DataDownloader(ABC):
         size_label = self._human_size_label(size_bytes, size_format)
         elapsed = self._elapsed_label(started_at)
         if total_bytes > 0:
-            pct = max(1.0, min(99.0, 100.0 * size_bytes / total_bytes))
+            if size_bytes >= total_bytes:
+                pct = 100.0
+            else:
+                pct = max(1.0, min(99.0, 100.0 * size_bytes / total_bytes))
             print(f"  {label} {pct:3.0f}% {size_label} {elapsed}", end="\r")
         else:
             print(f"  {label} {size_label} {elapsed}", end="\r")
-
-    def _print_download_complete(
-        self,
-        label: str,
-        size_bytes: int,
-        total_bytes: int,
-        *,
-        size_format: str = "Decimal",
-    ) -> None:
-        size_label = self._human_size_label(size_bytes, size_format)
-        if total_bytes > 0:
-            print(f"\nOK {label} downloaded ({size_label}, 100%)")
-        else:
-            print(f"\nOK {label} downloaded ({size_label}, unknown total size)")
 
     def _stream_response_to_file(
         self,
@@ -205,14 +194,6 @@ class DataDownloader(ABC):
                         started_at,
                         size_format=size_format,
                     )
-
-        if show_download_progress:
-            self._print_download_complete(
-                download_label,
-                size,
-                total_size,
-                size_format=size_format,
-            )
 
         return output_path
 
@@ -695,7 +676,6 @@ class MRMSDownloader(DataDownloader):
                 show_download_progress=show_download_progress,
             )
 
-        print(f"\n✅ {name_file} downloaded ({mb:.1f}MB)")
         return gz_path
 
     def download(
