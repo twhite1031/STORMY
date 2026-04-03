@@ -1172,7 +1172,8 @@ class Sentinel2Downloader(DataDownloader):
                     continue
 
                 try:
-                    self._stream_download(href, out_path, timeout_s=timeout_s, item_id=item.id)
+                    progress_label = f"{item.id}_{band}"
+                    self._stream_download(href, out_path, timeout_s=timeout_s, label=progress_label)
                     downloaded_files.append(out_path)
                     success_count += 1
                 except Exception as e:
@@ -1182,7 +1183,7 @@ class Sentinel2Downloader(DataDownloader):
         total_size_mb = sum(p.stat().st_size for p in downloaded_files if p.exists()) / (1024**2)
         return DownloadResult(downloaded_files, success_count, failure_count, total_size_mb)
 
-    def _stream_download(self, url: str, out_path: Path, *, timeout_s: int = 180, item_id: str) -> None:
+    def _stream_download(self, url: str, out_path: Path, *, timeout_s: int = 180, label: str) -> None:
         out_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Split connect/read timeouts for better behavior
@@ -1193,8 +1194,8 @@ class Sentinel2Downloader(DataDownloader):
             self._stream_response_to_file(
                 r,
                 out_path,
-                label=item_id,
-                chunk_size=1024 * 1024,
+                label=label,
+                chunk_size=128 * 1024,
             )
 
 
@@ -1317,3 +1318,150 @@ def download_WSR88D(*args, **kwargs) -> List[Path]:
     downloader = WSR88DDownloader(kwargs.get('path_out', '.'))
     result = downloader.download(*args, **kwargs)
     return result.files
+
+
+def download_LMA(*args, **kwargs) -> List[Path]:
+    """
+    Legacy function for backward compatibility.
+
+    Deprecated: Use STORMY().download_LMA() instead.
+    """
+    import warnings
+    warnings.warn(
+        "download_LMA is deprecated. Use STORMY().download_LMA()",
+        DeprecationWarning,
+        stacklevel=2
+    )
+
+    downloader = LMADownloader(kwargs.get('path_out', '.'))
+    result = downloader.download(*args, **kwargs)
+    return result.files
+
+
+def download_NWSSOUNDING(*args, **kwargs) -> List[Path]:
+    """
+    Legacy function for backward compatibility.
+
+    Deprecated: Use STORMY().download_NWSSOUNDING() instead.
+    """
+    import warnings
+    warnings.warn(
+        "download_NWSSOUNDING is deprecated. Use STORMY().download_NWSSOUNDING()",
+        DeprecationWarning,
+        stacklevel=2
+    )
+
+    downloader = NWSSoundingDownloader(kwargs.get('path_out', '.'))
+    result = downloader.download(*args, **kwargs)
+    return result.files
+
+
+def download_MRMS(*args, **kwargs) -> List[Path]:
+    """
+    Legacy function for backward compatibility.
+
+    Deprecated: Use STORMY().download_MRMS() instead.
+    """
+    import warnings
+    warnings.warn(
+        "download_MRMS is deprecated. Use STORMY().download_MRMS()",
+        DeprecationWarning,
+        stacklevel=2
+    )
+
+    downloader = MRMSDownloader(kwargs.get('path_out', '.'))
+    result = downloader.download(*args, **kwargs)
+    return result.files
+
+
+def download_ASOS(*args, **kwargs) -> List[Path]:
+    """
+    Legacy function for backward compatibility.
+
+    Deprecated: Use STORMY().download_ASOS() instead.
+    """
+    import warnings
+    warnings.warn(
+        "download_ASOS is deprecated. Use STORMY().download_ASOS()",
+        DeprecationWarning,
+        stacklevel=2
+    )
+
+    downloader = ASOSDownloader(kwargs.get('path_out', '.'))
+    result = downloader.download(*args, **kwargs)
+    return result.files
+
+
+def download_ERA5SINGLE(*args, **kwargs) -> List[Path]:
+    """
+    Legacy function for backward compatibility.
+
+    Deprecated: Use STORMY().download_ERA5SINGLE() instead.
+    """
+    import warnings
+    warnings.warn(
+        "download_ERA5SINGLE is deprecated. Use STORMY().download_ERA5SINGLE()",
+        DeprecationWarning,
+        stacklevel=2
+    )
+
+    downloader = ERA5SingleDownloader(kwargs.get('path_out', '.'))
+    result = downloader.download(*args, **kwargs)
+    return result.files
+
+
+def download_ERA5PRESSURE(*args, **kwargs) -> List[Path]:
+    """
+    Legacy function for backward compatibility.
+
+    Deprecated: Use STORMY().download_ERA5PRESSURE() instead.
+    """
+    import warnings
+    warnings.warn(
+        "download_ERA5PRESSURE is deprecated. Use STORMY().download_ERA5PRESSURE()",
+        DeprecationWarning,
+        stacklevel=2
+    )
+
+    downloader = ERA5PressureDownloader(kwargs.get('path_out', '.'))
+    result = downloader.download(*args, **kwargs)
+    return result.files
+
+
+def download_SENTINEL(*args, **kwargs) -> List[Path]:
+    """
+    Legacy function for backward compatibility.
+
+    Deprecated: Use STORMY().download_SENTINEL() instead.
+    """
+    import warnings
+    warnings.warn(
+        "download_SENTINEL is deprecated. Use STORMY().download_SENTINEL()",
+        DeprecationWarning,
+        stacklevel=2
+    )
+
+    downloader = Sentinel2Downloader(kwargs.get('path_out', '.'))
+    result = downloader.download(*args, **kwargs)
+    return result.files
+
+
+def download_ASOS_STATES(*args, **kwargs) -> List[Path]:
+    """
+    Backward-compatible alias for the historical ASOS states helper.
+    """
+    return download_ASOS(*args, **kwargs)
+
+
+def download_ERA5_SINGLE(*args, **kwargs) -> List[Path]:
+    """
+    Backward-compatible alias for the historical ERA5 single-level helper.
+    """
+    return download_ERA5SINGLE(*args, **kwargs)
+
+
+def download_NWS_SOUNDING(*args, **kwargs) -> List[Path]:
+    """
+    Backward-compatible alias for the historical NWS sounding helper.
+    """
+    return download_NWSSOUNDING(*args, **kwargs)

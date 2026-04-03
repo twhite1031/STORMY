@@ -1,4 +1,3 @@
-import STORMY
 from STORMY import STORMY_downloader
 from datetime import datetime
 
