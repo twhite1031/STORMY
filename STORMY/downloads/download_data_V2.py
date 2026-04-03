@@ -133,6 +133,16 @@ class DataDownloader(ABC):
             return f"{elapsed_seconds // 60}m{elapsed_seconds % 60}s"
         return f"{elapsed_seconds}s"
 
+    @staticmethod
+    def _human_size_label(size_bytes: int, size_format: str = "Decimal") -> str:
+        divisor = 1024 if size_format == "Binary" else 1000
+        unit = "KiB" if size_format == "Binary" else "KB"
+        if size_bytes < divisor * divisor:
+            return f"{size_bytes / divisor:.1f}{unit}"
+        mb_divisor = divisor * divisor
+        mb_unit = "MiB" if size_format == "Binary" else "MB"
+        return f"{size_bytes / mb_divisor:.1f}{mb_unit}"
+
     def _print_download_progress(
         self,
         label: str,
@@ -142,13 +152,13 @@ class DataDownloader(ABC):
         *,
         size_format: str = "Decimal",
     ) -> None:
-        size_mb = size_bytes / self._size_divisor(size_format)
+        size_label = self._human_size_label(size_bytes, size_format)
         elapsed = self._elapsed_label(started_at)
         if total_bytes > 0:
-            pct = 100.0 * size_bytes / total_bytes
-            print(f"  {label} {pct:3.0f}% {size_mb:.1f}MB {elapsed}", end="\r")
+            pct = max(1.0, min(99.0, 100.0 * size_bytes / total_bytes))
+            print(f"  {label} {pct:3.0f}% {size_label} {elapsed}", end="\r")
         else:
-            print(f"  {label} {size_mb:.1f}MB {elapsed}", end="\r")
+            print(f"  {label} {size_label} {elapsed}", end="\r")
 
     def _print_download_complete(
         self,
@@ -158,11 +168,11 @@ class DataDownloader(ABC):
         *,
         size_format: str = "Decimal",
     ) -> None:
-        size_mb = size_bytes / self._size_divisor(size_format)
+        size_label = self._human_size_label(size_bytes, size_format)
         if total_bytes > 0:
-            print(f"\nOK {label} downloaded ({size_mb:.1f}MB, 100%)")
+            print(f"\nOK {label} downloaded ({size_label}, 100%)")
         else:
-            print(f"\nOK {label} downloaded ({size_mb:.1f}MB, unknown total size)")
+            print(f"\nOK {label} downloaded ({size_label}, unknown total size)")
 
     def _stream_response_to_file(
         self,
