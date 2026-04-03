@@ -1197,7 +1197,6 @@ class Sentinel2Downloader(DataDownloader):
                 chunk_size=1024 * 1024,
             )
 
-                print(f"\n✅ {item_id} downloaded ({mb:.1f}MB)")
 
 # ============================================================================
 # High-level API
