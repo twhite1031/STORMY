@@ -122,6 +122,90 @@ class DataDownloader(ABC):
             end_time = start_time
         return TimeRange(start_time, end_time, step)
 
+    @staticmethod
+    def _size_divisor(size_format: str) -> int:
+        return 1024 * 1024 if size_format == "Binary" else 1000 * 1000
+
+    @staticmethod
+    def _elapsed_label(started_at: datetime) -> str:
+        elapsed_seconds = int((datetime.now() - started_at).total_seconds())
+        if elapsed_seconds >= 60:
+            return f"{elapsed_seconds // 60}m{elapsed_seconds % 60}s"
+        return f"{elapsed_seconds}s"
+
+    def _print_download_progress(
+        self,
+        label: str,
+        size_bytes: int,
+        total_bytes: int,
+        started_at: datetime,
+        *,
+        size_format: str = "Decimal",
+    ) -> None:
+        size_mb = size_bytes / self._size_divisor(size_format)
+        elapsed = self._elapsed_label(started_at)
+        if total_bytes > 0:
+            pct = 100.0 * size_bytes / total_bytes
+            print(f"  {label} {pct:3.0f}% {size_mb:.1f}MB {elapsed}", end="\r")
+        else:
+            print(f"  {label} {size_mb:.1f}MB {elapsed}", end="\r")
+
+    def _print_download_complete(
+        self,
+        label: str,
+        size_bytes: int,
+        total_bytes: int,
+        *,
+        size_format: str = "Decimal",
+    ) -> None:
+        size_mb = size_bytes / self._size_divisor(size_format)
+        if total_bytes > 0:
+            print(f"\nOK {label} downloaded ({size_mb:.1f}MB, 100%)")
+        else:
+            print(f"\nOK {label} downloaded ({size_mb:.1f}MB, unknown total size)")
+
+    def _stream_response_to_file(
+        self,
+        response,
+        output_path: Path,
+        *,
+        label: Optional[str] = None,
+        chunk_size: int = 8192,
+        size_format: str = "Decimal",
+        show_download_progress: bool = True,
+    ) -> Path:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        total_size = int(response.headers.get("content-length", 0))
+        size = 0
+        started_at = datetime.now()
+        download_label = label or output_path.name
+
+        with open(output_path, "wb") as output_file:
+            for chunk in response.iter_content(chunk_size=chunk_size):
+                if not chunk:
+                    continue
+                output_file.write(chunk)
+                size += len(chunk)
+                if show_download_progress:
+                    self._print_download_progress(
+                        download_label,
+                        size,
+                        total_size,
+                        started_at,
+                        size_format=size_format,
+                    )
+
+        if show_download_progress:
+            self._print_download_complete(
+                download_label,
+                size,
+                total_size,
+                size_format=size_format,
+            )
+
+        return output_path
+
 
 # ============================================================================
 # Specific Downloaders
@@ -146,25 +230,14 @@ class GOESDownloader(DataDownloader):
     
     VALID_SATELLITES = {'goes16', 'goes17', 'goes18', 'goes19'}
 
-    # Static method for downloading a single file with retries and progress bar
-    @staticmethod
-    def download_file(URL, name_file, path_out, retries=10, backoff=0.2, size_format='Decimal', show_download_progress=True, overwrite_file=False):
-
-        StartTime = datetime.now() # Reference time for download duration
-        size = 0 # Reference size for download progress
-
+    def download_file(self, URL, name_file, path_out, retries=10, backoff=0.2, size_format='Decimal', show_download_progress=True, overwrite_file=False):
         retries_config = Retry(total=retries, backoff_factor=backoff, status_forcelist=[500, 502, 503, 504])
         session = requests.Session()
         session.mount('http://', HTTPAdapter(max_retries=retries_config))
         session.mount('https://', HTTPAdapter(max_retries=retries_config))
 
         req = session.get(URL, stream=True)
-        total_size = int(req.headers['content-length'])
-        
-        if size_format == 'Binary':
-            dsize = 1024*1024
-        else:
-            dsize = 1000*1000
+        total_size = int(req.headers.get('content-length', 0))
 
         make_download = True
         output_path = Path(path_out) / name_file
@@ -181,17 +254,14 @@ class GOESDownloader(DataDownloader):
                 make_download = True
 
         if make_download == True:
-            with open(output_path,'wb') as output_file:
-                for chunk in req.iter_content(chunk_size=1024):
-                    if chunk:
-                        rec_size = output_file.write(chunk)
-                        size = rec_size + size
-                        if show_download_progress==True:
-                            print('  {} {:3.0f}% {:.1f}MB {}'.format(name_file,100.0*size/total_size, size/dsize, '{}m{}s'.format(round((datetime.now()-StartTime).seconds/60.0),(datetime.now()-StartTime).seconds%60) if (datetime.now()-StartTime).seconds>60 else '{}s'.format((datetime.now()-StartTime).seconds) ), end="\r") #, flush=True)
-                            #print('\t{}\t{:3.0f}%\t{:.2f} min'.format(name_file,100.0*size/total_size, (datetime.now()-StartTime).seconds/60.0), end="\r") #, flush=True)
-                            if size == total_size:
-                                #print('\n')
-                                print('  {} {:3.0f}% {:.1f}MB {}'.format(name_file,100.0*size/total_size, size/dsize, '{}m{}s'.format(round((datetime.now()-StartTime).seconds/60.0),(datetime.now()-StartTime).seconds%60) if (datetime.now()-StartTime).seconds>60 else '{}s'.format((datetime.now()-StartTime).seconds) ))
+            self._stream_response_to_file(
+                req,
+                output_path,
+                label=name_file,
+                chunk_size=1024,
+                size_format=size_format,
+                show_download_progress=show_download_progress,
+            )
     # Main download method
     def download(
         self,
@@ -369,25 +439,14 @@ class GOESDownloader(DataDownloader):
 
 class WSR88DDownloader(DataDownloader):
 
-    @staticmethod
-    def download_file(URL, name_file, path_out, retries=10, backoff=0.2, size_format='Decimal', show_download_progress=True, overwrite_file=False):
-
-        StartTime = datetime.now() # Reference time for download duration
-        size = 0 # Reference size for download progress
-
+    def download_file(self, URL, name_file, path_out, retries=10, backoff=0.2, size_format='Decimal', show_download_progress=True, overwrite_file=False):
         retries_config = Retry(total=retries, backoff_factor=backoff, status_forcelist=[500, 502, 503, 504])
         session = requests.Session()
         session.mount('http://', HTTPAdapter(max_retries=retries_config))
         session.mount('https://', HTTPAdapter(max_retries=retries_config))
         req = session.get(URL, stream=True)
-        
-        total_size = int(req.headers.get('content-length', 0))
-        
-        if size_format == 'Binary':
-            dsize = 1024*1024
-        else:
-            dsize = 1000*1000
 
+        total_size = int(req.headers.get('content-length', 0))
         make_download = True
         output_path = Path(path_out) / name_file
         if output_path.exists():
@@ -402,40 +461,15 @@ class WSR88DDownloader(DataDownloader):
                 make_download = True
 
         if make_download:
-            with open(output_path, "wb") as output_file:
-                for chunk in req.iter_content(chunk_size=1024):
-                    if chunk:
-                        rec_size = output_file.write(chunk)
-                        size += rec_size
+            self._stream_response_to_file(
+                req,
+                output_path,
+                label=name_file,
+                chunk_size=1024,
+                size_format=size_format,
+                show_download_progress=show_download_progress,
+            )
 
-                        if show_download_progress:
-                            elapsed = datetime.now() - StartTime
-
-                            # If total size known — show percentage
-                            if total_size > 0:
-                                pct = 100.0 * size / total_size
-                                print(
-                                    f"  {name_file} {pct:3.0f}% {size/dsize:.1f}MB "
-                                    f"{elapsed.seconds//60}m{elapsed.seconds%60}s",
-                                    end="\r",
-                                )
-                            else:
-                                # No total size known — show size only
-                                print(
-                                    f"  {name_file} {size/dsize:.1f}MB "
-                                    f"{elapsed.seconds//60}m{elapsed.seconds%60}s",
-                                    end="\r",
-                                )
-                if total_size > 0:
-                    print(
-                        f"\n✅  {name_file} downloaded "
-                        f"({size/dsize:.1f}MB, 100%)"
-                    )
-                else:
-                    print(
-                        f"\n✅  {name_file} downloaded "
-                        f"({size/dsize:.1f}MB, unknown total size)"
-                    )
     def download(
         self,
         station: str,
@@ -457,7 +491,7 @@ class WSR88DDownloader(DataDownloader):
 
         for day in pd.date_range(time_range.start.date(), time_range.end.date()):
             day_path = f"{bucket_root}/{day.year}/{day.month:02d}/{day.day:02d}/{station.upper()}/"
-            
+
             try:
                 files = np.array(fs.ls(day_path))
             except FileNotFoundError:
@@ -470,21 +504,17 @@ class WSR88DDownloader(DataDownloader):
                 try:
                     ts_str = fname[len(station):len(station)+15]  # "20221118_135000"
                     ftime = datetime.strptime(ts_str, "%Y%m%d_%H%M%S")
-
                 except Exception:
                     continue
 
                 if start_time <= ftime <= end_time:
-                    print(ftime)
                     output_path = self.path_out / fname
                     if output_path.exists() and not overwrite_file:
                         downloaded_files.append(output_path)
                         logger.warning(f"  {fname} already exists.")
                         continue
-                    print("f", f)
                     url = f"https://unidata-nexrad-level2.s3.amazonaws.com/{f[len('unidata-nexrad-level2/'):]}"
-                    print(fname)
-                    self.download_file(url, fname, self.path_out)
+                    self.download_file(url, fname, self.path_out, overwrite_file=overwrite_file)
                     downloaded_files.append(output_path)
 
         if not downloaded_files:
@@ -498,11 +528,9 @@ class LMADownloader(DataDownloader):
 
     BASE_URL = "https://data.nssl.noaa.gov/thredds/fileServer/WRDD"
 
-    @staticmethod
-    def _download_file(url, name_file, path_out, overwrite_file=False):
+    def _download_file(self, url, name_file, path_out, overwrite_file=False):
         """Stream download with simple progress bar."""
         output_path = Path(path_out) / name_file
-        start_time = datetime.now()
 
         # Check if file exists
         if output_path.exists() and not overwrite_file:
@@ -512,25 +540,7 @@ class LMADownloader(DataDownloader):
         # Stream request
         with requests.get(url, stream=True, timeout=60) as r:
             r.raise_for_status()
-            total = int(r.headers.get("content-length", 0))
-            size = 0
-            with open(output_path, "wb") as f:
-                for chunk in r.iter_content(chunk_size=8192):
-                    if not chunk:
-                        continue
-                    f.write(chunk)
-                    size += len(chunk)
-
-                    # --- progress bar ---
-                    elapsed = datetime.now() - start_time
-                    pct = (size / total * 100) if total > 0 else 0
-                    mb = size / 1_000_000
-                    eta = f"{elapsed.seconds//60}m{elapsed.seconds%60}s"
-                    print(f"  {name_file} {pct:3.0f}% {mb:.1f}MB {eta}", end="\r")
-
-        print(f"\n✅ {name_file} downloaded ({mb:.1f}MB)")
-        return output_path
-
+            return self._stream_response_to_file(r, output_path, label=name_file)
     def download(
         self,
         start_time: datetime,
@@ -580,11 +590,9 @@ class NWSSoundingDownloader(DataDownloader):
 
     base_url = "https://mesonet.agron.iastate.edu/cgi-bin/request/raob.py"
 
-    @staticmethod
-    def _download_file(url, payload, name_file, path_out, overwrite_file=False):
+    def _download_file(self, url, payload, name_file, path_out, overwrite_file=False):
         """Stream download with simple progress bar."""
         output_path = Path(path_out) / name_file
-        start_time = datetime.now()
 
         # Check if file exists
         if output_path.exists() and not overwrite_file:
@@ -594,24 +602,7 @@ class NWSSoundingDownloader(DataDownloader):
         # Stream request
         with requests.get(url, params=payload, stream=True, timeout=60) as r:
             r.raise_for_status()
-            total = int(r.headers.get("content-length", 0))
-            size = 0
-            with open(output_path, "wb") as f:
-                for chunk in r.iter_content(chunk_size=8192):
-                    if not chunk:
-                        continue
-                    f.write(chunk)
-                    size += len(chunk)
-
-                    # --- progress bar ---
-                    elapsed = datetime.now() - start_time
-                    pct = (size / total * 100) if total > 0 else 0
-                    mb = size / 1_000_000
-                    eta = f"{elapsed.seconds//60}m{elapsed.seconds%60}s"
-                    print(f"  {name_file} {pct:3.0f}% {mb:.1f}MB {eta}", end="\r")
-
-        print(f"\n✅ {name_file} downloaded ({mb:.1f}MB)")
-        return output_path
+            return self._stream_response_to_file(r, output_path, label=name_file)
 
     def download(
         self,
@@ -664,10 +655,8 @@ class MRMSDownloader(DataDownloader):
     and requests for robust, controllable downloads with progress.
     """
 
-    @staticmethod
-    def download_file(s3, bucket,key, name_file, path_out, retries=10, backoff=0.2, size_format='Decimal', show_download_progress=True, overwrite_file=False):
-        gz_path = Path(path_out) / name_file 
-        start_time = datetime.now()    
+    def download_file(self, s3, bucket,key, name_file, path_out, retries=10, backoff=0.2, size_format='Decimal', show_download_progress=True, overwrite_file=False):
+        gz_path = Path(path_out) / name_file
 
         # Check if file exists
         if gz_path.exists() and not overwrite_file:
@@ -678,7 +667,7 @@ class MRMSDownloader(DataDownloader):
         url = s3.generate_presigned_url(
             ClientMethod='get_object',
             Params={'Bucket': bucket, 'Key': key},
-            ExpiresIn=3600,  # valid for 1 hour
+            ExpiresIn=3600,
         )
 
         # --- Download via requests with retries ---
@@ -688,21 +677,13 @@ class MRMSDownloader(DataDownloader):
 
         with session.get(url, stream=True, timeout=60) as r:
             r.raise_for_status()
-            total = int(r.headers.get('content-length', 0))
-            size = 0
-            with open(gz_path, "wb") as f:
-                for chunk in r.iter_content(chunk_size=8192):
-                    if not chunk:
-                        continue
-                    f.write(chunk)
-                    size += len(chunk)
-
-                    # --- progress bar ---
-                    elapsed = datetime.now() - start_time
-                    pct = (size / total * 100) if total > 0 else 0
-                    mb = size / 1_000_000
-                    eta = f"{elapsed.seconds//60}m{elapsed.seconds%60}s"
-                    print(f"  {name_file} {pct:3.0f}% {mb:.1f}MB {eta}", end="\r")
+            return self._stream_response_to_file(
+                r,
+                gz_path,
+                label=name_file,
+                size_format=size_format,
+                show_download_progress=show_download_progress,
+            )
 
         print(f"\n✅ {name_file} downloaded ({mb:.1f}MB)")
         return gz_path
@@ -785,13 +766,10 @@ class ASOSDownloader(DataDownloader):
 
     base_url = 'https://mesonet.agron.iastate.edu/cgi-bin/request/asos.py'
 
-    @staticmethod
-    def _download_file(url, payload,name_file, path_out, overwrite_file=False):
+    def _download_file(self, url, payload,name_file, path_out, overwrite_file=False):
         """Stream download with simple progress bar."""
         output_path = Path(path_out) /  name_file
-        start_time = datetime.now()
-        
-        # Check if file exists
+
         if output_path.exists() and not overwrite_file:
             logger.warning(f"  {name_file} already exists.")
             return output_path
@@ -799,24 +777,7 @@ class ASOSDownloader(DataDownloader):
         # Stream request
         with requests.get(url, params=payload, stream=True, timeout=60) as r:
             r.raise_for_status()
-            total = int(r.headers.get("content-length", 0))
-            size = 0
-            with open(output_path, "wb") as f:
-                for chunk in r.iter_content(chunk_size=8192):
-                    if not chunk:
-                        continue
-                    f.write(chunk)
-                    size += len(chunk)
-
-                    # --- progress bar ---
-                    elapsed = datetime.now() - start_time
-                    pct = (size / total * 100) if total > 0 else 0
-                    mb = size / 1_000_000
-                    eta = f"{elapsed.seconds//60}m{elapsed.seconds%60}s"
-                    print(f"  {name_file} {pct:3.0f}% {mb:.1f}MB {eta}", end="\r")
-
-        print(f"\n✅ {name_file} downloaded ({mb:.1f}MB)")
-        return output_path
+            return self._stream_response_to_file(r, output_path, label=name_file)
 
     def download(
         self,
@@ -1221,8 +1182,7 @@ class Sentinel2Downloader(DataDownloader):
         total_size_mb = sum(p.stat().st_size for p in downloaded_files if p.exists()) / (1024**2)
         return DownloadResult(downloaded_files, success_count, failure_count, total_size_mb)
 
-    @staticmethod
-    def _stream_download(url: str, out_path: Path, *, timeout_s: int = 180,item_id:str) -> None:
+    def _stream_download(self, url: str, out_path: Path, *, timeout_s: int = 180, item_id: str) -> None:
         out_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Split connect/read timeouts for better behavior
@@ -1230,22 +1190,12 @@ class Sentinel2Downloader(DataDownloader):
 
         with requests.get(url, stream=True, timeout=timeout) as r:
             r.raise_for_status()
-            total = int(r.headers.get("content-length", 0))
-            size = 0
-            start_time = datetime.now()
-            # Write content to disk
-            with open(out_path, "wb") as f:
-                for chunk in r.iter_content(chunk_size=1024 * 1024):
-                    if chunk:  # filter out keep-alives
-                        f.write(chunk)
-                        size += len(chunk)
-
-                        # --- progress bar ---
-                        elapsed = datetime.now() - start_time
-                        pct = (size / total * 100) if total > 0 else 0
-                        mb = size / 1_000_000
-                        eta = f"{elapsed.seconds//60}m{elapsed.seconds%60}s"
-                        print(f"  {item_id} {pct:3.0f}% {mb:.1f}MB {eta}", end="\r")
+            self._stream_response_to_file(
+                r,
+                out_path,
+                label=item_id,
+                chunk_size=1024 * 1024,
+            )
 
                 print(f"\n✅ {item_id} downloaded ({mb:.1f}MB)")
 
