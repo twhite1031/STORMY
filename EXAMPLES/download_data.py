@@ -1,8 +1,7 @@
-import STORMY
 from STORMY import STORMY_downloader
 from datetime import datetime
 
-downloader = STORMY_downloader(data_root=r'C:\Users\thomas.james.white\Documents')
+downloader = STORMY_downloader(data_root=r'C:\Users\thoma\Documents')
 
 GOES_result = downloader.download_GOES(
     satellite='goes16',
@@ -50,7 +49,7 @@ SOUNDING_result = downloader.download_NWSSOUNDING(
 )
 
 result = downloader.download_SENTINEL(
-    bands=["rendered_preview"],
+    bands=["B02"],
     start_time=datetime(2025, 7, 1),
     end_time=datetime(2025, 7, 31),
     bbox=[-97.2, 47.8, -96.7, 48.1],   # [W, S, E, N]
