@@ -102,6 +102,7 @@ cmap = plt.get_cmap("NWSRef")  # or your defined reflectivity colormap
 
 # Create a BoundaryNorm for shared normalization
 norm = BoundaryNorm(boundaries=levels, ncolors=cmap.N, clip=True)
+
 # Plot MRMS with pcolormesh 
 mesh = ax1.pcolormesh(MRMS_lons, MRMS_lats, z, cmap=cmap,norm=norm,shading="auto", transform=ccrs.PlateCarree())
 
@@ -118,8 +119,7 @@ cb.ax.tick_params(labelsize=5, labelcolor='black', width=0.5, length=1.5, direct
 cb.set_label(label='{}'.format("dBZ"), size=5, color='black', weight='normal')
 cb.outline.set_linewidth(0.5)
 
-# Title
-ax1.set_title(f"MRMS QC Composite Reflectivity at {formatted_time}", fontsize=10)
+
 ax2.set_title(f"WRF Composite Reflectivity at {matched_time}",fontsize=10)
 
 plt.show()

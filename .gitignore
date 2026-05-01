@@ -1,2 +1,31 @@
-/COMPLETE/countyline_files
-/COMPLETE/__pycache__
+# Byte-compiled files
+__pycache__/
+*.py[cod]
+*.pyc
+
+# Distribution / packaging
+*.egg-info/
+*.egg
+dist/
+build/
+
+# Duplicate Files
+*.swp
+
+# Ignore all output images
+*.png
+*.jpg
+*.jpeg
+
+# VScode settings
+.vscode/
+
+# Typical Data Types
+*.nc
+*.h5
+*.hdf5
+*.grib
+*.grib2
+*.csv # Adjustable if you want to track csv files
+*_V06*
+*_MDM

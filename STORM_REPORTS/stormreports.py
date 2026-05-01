@@ -27,10 +27,10 @@ df['BEGIN_DATETIME'] = pd.to_datetime(df['BEGIN_DATETIME_STR'])
 pacific_tz = timezone('US/Pacific')
 df['BEGIN_DATETIME_UTC'] = df['BEGIN_DATETIME'].apply(lambda x: pacific_tz.localize(x).astimezone(timezone('UTC')))
 
-# ✅ Check result
+# Check result
 print(df[['BEGIN_DATETIME', 'BEGIN_DATETIME_UTC']])
 
-# ✅ Now filter using full timestamps!
+# Now filter using full timestamps!
 start1 = pd.Timestamp('2023-01-07 00:00')
 end1 = pd.Timestamp('2023-01-08 23:59')
 
@@ -51,7 +51,7 @@ print(jan7_8_subset)
 print("\nJan 9-11 Reports: ", len(jan9_11_subset))
 print(jan9_11_subset)
 
-# ✅ Most common event types
+# Most common event types
 common_types1 = jan7_8_subset['EVENT_TYPE'].value_counts()
 common_types2 = jan9_11_subset['EVENT_TYPE'].value_counts()
 

@@ -2,18 +2,18 @@
 #-----------------------------------------------------------------------------------------------------------------------------------
 '''
 Description: Download Meteorological Data Straight from Source
-- GOES 16-19
+- GOES 16-19 @joaohenry23
 - WSR88D LVL II Data
 - NSSL LMA h5 Files
 - ASOS by State
-
-In Progress:
 - MRMS
 - ERA5
+- NWS Soundings
+
 Author: Thomas White
 E-mail: thomaswhite675@gmail.com
 Created date: July 31, 2025
-Modification date: 
+Modification date: October 21, 2025
 '''
 #-----------------------------------------------------------------------------------------------------------------------------------
 import numpy as np
@@ -22,7 +22,6 @@ from datetime import *
 import requests
 import os
 import subprocess
-import nexradaws
 import pandas as pd
 import gzip
 import shutil
@@ -30,6 +29,7 @@ import boto3
 from botocore import UNSIGNED
 from botocore.config import Config
 import cdsapi
+import nexradaws
 
 from io import StringIO
 from urllib3.util.retry import Retry
@@ -373,7 +373,7 @@ def download_GOES(Satellite, Product, DateTimeIni=None, DateTimeFin=None, domain
 
     Downloaded_files.sort()
 
-    return Downloaded_files;
+    return Downloaded_files
 
 #-----------------------------------------------------------------------------------------------------------------------------------
 
@@ -398,14 +398,14 @@ def download_WSR88D(radar, DateTimeIni=None, DateTimeFin=None, path_out=''):
     - Uses the `nexradaws` interface to query and download data from NOAA's AWS S3 archive.
     - Only downloads files that do not already exist in the output directory.
     """
-
+    downloaded_files = []
     if DateTimeIni is None:
         print('\nYou must define initial DateTimeIni\n')
         return
     
     if DateTimeFin is None:
         DateTimeFin = DateTimeIni
-     
+    
     conn = nexradaws.NexradAwsInterface()
     scans = conn.get_avail_scans_in_range(DateTimeIni, DateTimeFin, radar)
     
@@ -415,18 +415,21 @@ def download_WSR88D(radar, DateTimeIni=None, DateTimeFin=None, path_out=''):
 
     print(f"\nThere are {len(scans)} scans available for {radar} between {DateTimeIni} and {DateTimeFin}\n")
 
-   
-    for scan in scans:
-        local_path = os.path.join(path_out, scan.filename)
 
+    for scan in scans:
+        # Handle None or empty string
+        path_out = path_out if path_out else "."
+        local_path = os.path.join(path_out, scan.filename)
+        downloaded_files.append(local_path)
         if os.path.exists(local_path):
             print(f"{scan.filename} already exists")
         else:
             print(f"Downloading {scan.filename}")
             conn.download(scan, path_out)
 
-    print('\n')
+    return downloaded_files
     
+#-----------------------------------------------------------------------------------------------------------------------------------
 
 def download_LMA(start, tbuffer=1800,path_out=''):
     """
@@ -452,12 +455,14 @@ def download_LMA(start, tbuffer=1800,path_out=''):
     ------
     - Files are downloaded from:
       https://data.nssl.noaa.gov/thredds/fileServer/WRDD/OKLMA/deployments/flashsort_6/h5_files
-    - Files are skipped if they already exist locally.
     """
 
     base_url = 'https://data.nssl.noaa.gov/thredds/fileServer/WRDD/OKLMA/deployments/flashsort_6/h5_files'
 
-    os.makedirs(path_out, exist_ok=True)
+    # Handle None or empty string
+    path_out = path_out if path_out else "."
+
+    os.makedirs(path_out, exist_ok=True) # Make the directory if it doesn't exist
     downloaded_files = []
 
     # Loop through each 10-min interval from start to start + tbuffer
@@ -478,11 +483,14 @@ def download_LMA(start, tbuffer=1800,path_out=''):
             except Exception as e:
                 print(f"Failed to download {filename}: {e}")
         else:
+            downloaded_files.append(local_path)
             print(f"{local_path} already exists.")
     print('\n')
     return downloaded_files
 
-def download_ASOS(states=[], start_time=None, end_time=None, path_out='asos_data.csv'):
+#-----------------------------------------------------------------------------------------------------------------------------------
+
+def download_ASOS_STATES(states=[], start_time=None, end_time=None, path_out='asos_data.csv'):
     """
     Download ASOS weather observations from IEM (Iowa Environmental Mesonet) 
     for a list of U.S. states and a specified time range.
@@ -501,9 +509,8 @@ def download_ASOS(states=[], start_time=None, end_time=None, path_out='asos_data
 
     Returns:
     -------
-    df_all : pandas.DataFrame
-        A DataFrame containing the combined ASOS observations with metadata.
-        Returns None if no data was retrieved or if input validation fails.
+    downloaded_files : list of str
+        Paths to the downloaded (or already existing) .csv file.
 
     Notes:
     ------
@@ -511,8 +518,6 @@ def download_ASOS(states=[], start_time=None, end_time=None, path_out='asos_data
       https://mesonet.agron.iastate.edu/cgi-bin/request/asos.py
     - Station metadata (lat/lon/elevation) is retrieved from GeoJSON via:
       https://mesonet.agron.iastate.edu/geojson/network.py
-    - If the specified file already exists, it is loaded and returned directly
-      without re-downloading.
     - Columns include temperature, dewpoint, wind, pressure, precipitation, 
       and cloud cover (skyc1 to skyc4).
     """
@@ -524,7 +529,7 @@ def download_ASOS(states=[], start_time=None, end_time=None, path_out='asos_data
         print("Please provide both start_time and end_time as datetime objects.")
         return
 
-    # If user passed a directory, generate a filename
+    # If user passed a directory, generate a complete filepath
     if os.path.isdir(path_out):
         fname = f"asos_data_{'_'.join(states)}_{start_time.strftime('%Y%m%d%H%M')}_{end_time.strftime('%Y%m%d%H%M')}.csv"
         path_out = os.path.join(path_out, fname)
@@ -532,7 +537,7 @@ def download_ASOS(states=[], start_time=None, end_time=None, path_out='asos_data
     # Check if the file already exists
     if os.path.exists(path_out):
         print(f"{path_out} already exists.")
-        return pd.read_csv(path_out)  
+        return path_out 
 
     # Step 1: Fetch station metadata
     all_stations = []
@@ -558,7 +563,7 @@ def download_ASOS(states=[], start_time=None, end_time=None, path_out='asos_data
     
     if not all_stations:
         print("No stations found.")
-        return
+        return None
 
     df_stations = pd.DataFrame(all_stations)
 
@@ -614,12 +619,27 @@ def download_ASOS(states=[], start_time=None, end_time=None, path_out='asos_data
     )
 
     # Step 4: Save to file
-    if os.path.isdir(path_out):
+    if not path_out:
+        # No path provided - use current directory with auto-generated filename
+        fname = f"asos_data_{'_'.join(states)}_{start_time.strftime('%Y%m%d%H%M')}_{end_time.strftime('%H%M')}.csv"
+        path_out = fname
+    elif os.path.isdir(path_out):
+        # Directory provided - generate filename and join
         fname = f"asos_data_{'_'.join(states)}_{start_time.strftime('%Y%m%d%H%M')}_{end_time.strftime('%H%M')}.csv"
         path_out = os.path.join(path_out, fname)
+    else:
+        # Assume it's a full file path - use as-is
+        # Optionally validate the parent directory exists
+        parent_dir = os.path.dirname(path_out)
+        if parent_dir and not os.path.exists(parent_dir):
+            raise ValueError(f"Directory does not exist: {parent_dir}")
+
     df_all.to_csv(path_out, index=False)
     print(f"Data saved to {path_out}\n")
-    return df_all
+
+    return path_out
+
+#-----------------------------------------------------------------------------------------------------------------------------------
 
 def download_MRMS(field, start_time, end_time, path_out='mrms'):
     """
@@ -644,6 +664,9 @@ def download_MRMS(field, start_time, end_time, path_out='mrms'):
     """
 
     s3 = boto3.client('s3', config=Config(signature_version=UNSIGNED))
+
+    # Handle None or empty string
+    path_out = path_out if path_out else "."
     os.makedirs(path_out, exist_ok=True)
 
     files_downloaded = []
@@ -663,8 +686,8 @@ def download_MRMS(field, start_time, end_time, path_out='mrms'):
                     unzip_filename = save_filename[:-3]
 
                     if os.path.exists(unzip_filename):
-                        print(f"{unzip_filename} already exists. Skipping.")
                         files_downloaded.append(unzip_filename)
+                        print(f"{unzip_filename} already exists. Skipping.")
                         continue
 
                     print(f"Downloading {key}")
@@ -687,6 +710,8 @@ def download_MRMS(field, start_time, end_time, path_out='mrms'):
     print('\n')
     
     return files_downloaded
+
+#-----------------------------------------------------------------------------------------------------------------------------------
 
 def download_ERA5_SINGLE(start_time, end_time, variables, area, path_out=''):
     """
@@ -714,7 +739,6 @@ def download_ERA5_SINGLE(start_time, end_time, variables, area, path_out=''):
     ------
     - Uses the CDS API (`cdsapi`) to download ERA5 single-level data from the Copernicus Climate Data Store.
     - Data is retrieved on a daily basis, broken down by hour range per day.
-    - Automatically skips downloads if the output file already exists.
     - Each variable is requested independently, with one GRIB file per day per variable.
     - Output filenames follow the pattern:
       'ERA5S_<variable>_YYYYMMDD_HHMM-HHMM.grib'
@@ -780,3 +804,71 @@ def download_ERA5_SINGLE(start_time, end_time, variables, area, path_out=''):
             downloaded_files.append(target_path)
 
     return downloaded_files
+
+#-----------------------------------------------------------------------------------------------------------------------------------
+
+def download_NWS_SOUNDING(start_time, end_time, stations, path_out=None):
+    """
+    Fetches NWS upper-air sounding data from the (Iowa Environmental Mesonet) Rawsinsonde
+    Data Archive (RAOB) API.
+
+    Parameters:
+    -------
+    start_time : datetime.datetime
+        Start time of the data request (UTC).
+    end_time : datetime.datetime
+        End time time of the data request (UTC).
+    stations  : list of str 
+        List of NWS station identifiers (e.g., ['BUF', 'ALB'])
+    path_out : str
+        File path or directory to save the CSV output. If none, does
+        not save
+
+    Returns:
+    -------
+    downloaded_files : list of str
+        Paths to the downloaded (or already existing) .csv file.
+    """
+    base_url = "https://mesonet.agron.iastate.edu/cgi-bin/request/raob.py"
+
+    payload = {
+        "sts": start_time.strftime("%Y-%m-%dT%H:%MZ"),
+        "ets": end_time.strftime("%Y-%m-%dT%H:%MZ"),
+        "station": ','.join(stations),
+        "format": "comma",
+        "fields": "all",
+    }
+    # Filename and full path
+    filename = f"nws_soundings_{start_time.strftime('%Y%m%d%H')}_{end_time.strftime('%Y%m%d%H')}_{'_'.join(stations)}.csv"
+
+    # Handle None or empty string
+    path_out = path_out if path_out else "."
+    full_path = os.path.join(path_out, filename)
+    
+    # === Skip if file already exists ===
+    if os.path.exists(full_path):
+        print("Sounding data already exists.")
+        return full_path
+
+    # === Fetch from the web ===
+    print(f"Requesting data from {payload['sts']} to {payload['ets']} for {stations}")
+    response = requests.get(base_url, params=payload)
+
+    if response.status_code != 200 or not response.text.startswith("station,valid"):
+        raise RuntimeError("Failed to retrieve data. Check station codes and time format.")
+
+    # === Convert response to DataFrame ===
+    df = pd.read_csv(StringIO(response.text))
+
+    if df.empty:
+        print("No sounding data was returned for the specified time range and stations.")
+        return None
+
+    # === Save to CSV ===
+    os.makedirs(path_out, exist_ok=True)
+    df.to_csv(full_path, index=False)
+    print(f"Saved sounding data to: {full_path}")
+    
+    return full_path
+
+#-----------------------------------------------------------------------------------------------------------------------------------

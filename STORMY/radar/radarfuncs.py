@@ -3,16 +3,16 @@ import os
 from datetime import datetime, timedelta
 
 def parse_filename_datetime_obs(filepath):
-    
-    # Get the filename 
-        filename = filepath.split('/')[-1]
-    # Extract the date part (8 characters starting from the 5th character)
-        date_str = filename[4:12]
-    # Extract the time part (6 characters starting from the 13th character)
-        time_str = filename[13:19]
-    # Combine the date and time strings
-        datetime_str = date_str + time_str 
-        return datetime.strptime(datetime_str, '%Y%m%d%H%M%S')
+    filename = os.path.basename(filepath)  # Get file name from full path
+    print(f"filename: {filename}")
+    parts = filename.split('_')         
+    site_and_date = parts[0]             
+    time_str = parts[1]                   
+
+    date_str = site_and_date[4:]         
+    datetime_str = date_str + time_str   
+
+    return datetime_str, datetime.strptime(datetime_str, '%Y%m%d%H%M%S')
 
 def find_closest_radar_file(target_datetime, directory, radar_prefix=None):
     """Finds the file in the directory with the datetime closest to the target datetime."""
