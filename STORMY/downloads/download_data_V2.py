@@ -363,12 +363,11 @@ class GOESDownloader(DataDownloader):
         DateTimeIniLoop = start_time.replace(minute=0)
         DateTimeFinLoop = end_time.replace(minute=0)+timedelta(minutes=60)
         time_range_loop = self._normalize_time_range(DateTimeIniLoop, DateTimeFinLoop,timedelta(hours=1))
+        fs = s3fs.S3FileSystem(anon=True)
 
         for time in time_range_loop: 
             DateTimeFolder = time.strftime('%Y/%j/%H/')
-
             server = 's3://noaa-'+satellite+'/'+product+'/'
-            fs = s3fs.S3FileSystem(anon=True)
             ListFiles = np.array(fs.ls(server+DateTimeFolder))
 
             for line in ListFiles:
