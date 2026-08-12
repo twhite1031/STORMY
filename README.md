@@ -60,6 +60,23 @@ STORMY serves as a github repository as well as a custom python package. The goa
 STORMY is to streamline the data analysis proccess, allowing for all skill levels
 to make meaningful plots with complex data. 
 
+For lightweight WRF file and time organization, import only the focused helper you
+need. This does not load STORMY's downloader, radar, or plotting dependencies:
+
+```python
+from STORMY.WRF import get_timeidx_and_wrf_file
+
+timeidx, filename = get_timeidx_and_wrf_file(
+    date_time,
+    file_interval_sec=3600,
+    numtimeidx=12,
+    domain=2,
+)
+```
+
+Existing package-level imports such as `from STORMY import build_time_df` remain
+supported and are now loaded lazily.
+
 I recommened beginning in the [EXAMPLES directory](https://github.com/twhite1031/STORMY/tree/main/EXAMPLES), 
 where you can learn how the data is downloaded, formatted, and how to plot it on a basic map. 
 
